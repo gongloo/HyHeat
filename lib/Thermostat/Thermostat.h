@@ -108,7 +108,7 @@ class Thermostat {
 
   // Config
   float temp_target_in_c_ = 19;
-  float hysteresis_offset_in_c_ = 1.0;
+  float hysteresis_offset_in_c_ = 1.5;
   float opportunistic_heat_offset_in_c_ = 5.0;
 
   // State

@@ -49,7 +49,7 @@ TEST_F(UninitializedThermostatTest, DumpValues) {
   EXPECT_TRUE(vars["heater_temp"].isNull());
   EXPECT_EQ(0, vars["mode"]);
   EXPECT_EQ(19, vars["target_temp"]);
-  EXPECT_EQ(3, vars["hysteresis_offset"]);
+  EXPECT_EQ(1.5, vars["hysteresis_offset"]);
   EXPECT_EQ(0.5, vars["min_hysteresis_offset"]);
   EXPECT_EQ(5.0, vars["opportunistic_heat_offset"]);
   EXPECT_EQ(0, vars["furnace_on_ms"]);
@@ -230,11 +230,11 @@ TEST_F(ThermostatTest, SetTempTargetBounds) {
 TEST_F(ThermostatTest, SetHysteresisBounds) {
   t_.SetHysteresisOffset(0);
   auto vars = GetVars();
-  EXPECT_EQ(3, vars["hysteresis_offset"]);
+  EXPECT_EQ(1.5, vars["hysteresis_offset"]);
 
   t_.SetHysteresisOffset(20);
   vars = GetVars();
-  EXPECT_EQ(3, vars["hysteresis_offset"]);
+  EXPECT_EQ(1.5, vars["hysteresis_offset"]);
 }
 
 TEST_F(ThermostatTest, SetOpportunisticHeatOffsetBounds) {
