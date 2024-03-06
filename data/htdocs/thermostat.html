@@ -1,0 +1,291 @@
+﻿<html>
+<head>
+<title>HyHeat</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<style type="text/css">
+
+#set, #status, #adjust, #set_temps, #switch {
+	display: flex;
+	justify-content: space-evenly;
+	align-items: stretch;
+}
+
+#status {
+	align-items: center
+}
+
+#switch, #status, #set {
+	margin-top: 0.25em;
+}
+
+#status, #set {
+	gap: 0.25em;
+}
+
+#status, #adjust, #set_temps, #switch {
+	border-radius: 0.5em;
+	overflow: hidden;
+}
+
+#adjust, #set_temps {
+	flex-direction: column;
+	flex-grow: 1;
+	text-align: center;
+}
+
+#set {
+	--set-color: black;
+	--triangle-width: 1em;
+	color: var(--set-color);
+}
+
+#switch.off ~ #set {
+	opacity: 50%;
+	--set-color: dimgrey;
+}
+
+#set, #set a, #heat, #fan {
+	transition: 0.3s;
+}
+
+#heat, #fan {
+	opacity: 25%;
+}
+
+@keyframes pulsing_glow {
+	50% { text-shadow: 0 0 0.5em darkorange, 0 0 0.5em darkorange, 0 0 0.5em darkorange; }
+}
+
+#heat.on, #fan.on {
+	opacity: 100%;
+	text-shadow: 0 0 0.5em darkorange;
+	animation: pulsing_glow 3s infinite;
+}
+
+#up::after, #down::after {
+	display: block;
+	width: var(--triangle-width);
+	height: 0.75em;
+	margin: 0.5em auto;
+  background-size: calc(var(--triangle-width) / 2) 100%;
+  background-repeat: no-repeat;
+  background-position: left, right;
+	content: " ";
+}
+
+#up::after {
+  background-image:
+    linear-gradient(to bottom right, transparent 50%, var(--set-color) 0),
+    linear-gradient(to top right, var(--set-color) 50%, transparent 0);
+}
+
+#down::after {
+  background-image:
+    linear-gradient(to top right, transparent 50%, var(--set-color) 0),
+    linear-gradient(to bottom right, var(--set-color) 50%, transparent 0);
+}
+
+#down {
+	display: block;
+	width: 100%;
+	margin: 0;
+	border-top: 1px solid var(--divider-color);
+}
+
+#up:active, #down:active {
+	background: linear-gradient(#aaa, #ddd);
+}
+
+#min, #max {
+	font-size: 50%;
+	opacity: 50%;
+}
+
+#min {
+	order: 1;
+}
+#max {
+	order: -1;
+}
+
+#status, #set_temps, #adjust, #switch {
+	background: linear-gradient(#ddd, #aaa);
+}
+
+body {
+	background-color: black;
+	font-family: sans-serif;
+	font-weight: bold;
+	font-size: 48pt;
+	margin: 0;
+}
+
+#contents {
+	width: 5em;
+	margin-left: auto;
+	margin-right: auto;
+	--divider-color: dimgrey;
+}
+
+#title {
+	font-size: 40pt;
+	width: 100%;
+	text-align: center;
+	padding: 0.5em 0;
+	color: black;
+	background: linear-gradient(darkorange, #be6800);
+}
+
+#title .emphasis {
+	color: silver;
+	text-shadow: 0 0 0.05em black;
+}
+
+#switch div {
+	height: 2em;
+	cursor: pointer;
+	font-weight: bolder;
+	font-size: 50%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin: 0;
+	color: dimgrey;
+	border-left: 1px solid var(--divider-color);
+	flex-grow: 1;
+}
+
+#switch div.selected {
+	color: black;
+	background: linear-gradient(#be6800, darkorange);
+}
+
+#switch #off.selected {
+	color: silver;
+	background: linear-gradient(#333, #666);
+}
+
+#switch div:first-child {
+	border: none;
+	padding-left: 0.5ex;
+	border-radius: 1em 0em 0em 1em;
+}
+
+#switch div:last-child {
+	padding-right: 0.5ex;
+	border-radius: 0em 1em 1em 0em;
+}
+
+</style>
+<meta name="theme-color" content="darkorange">
+<script>
+  if('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  };
+</script>
+</head>
+<body class="off">
+	<div id="title"><span class="emphasis">Hy</span>Heat</div>
+	<div id="contents">
+		<div id="switch">
+			<div id="off" onclick="setMode(0)">Off</div>
+			<div id="engine" onclick="setMode(1)">Engine</div>
+			<div id="auto" onclick="setMode(2)">Auto</div>
+		</div>
+		<div id="status">
+			<span id="cur_temp" class="temp"></span>
+			<span id="heat" class="off" onclick="maybeTurnOnFurnace()">🔥</span>
+			<span id="fan" class="off">💨</span>
+		</div>
+		<div id="set">
+			<div id="set_temps">
+				<span id="min" class="temp"></span>
+				<span id="set_temp" class="temp" contenteditable="true" inputmode="decimal" onKeypress="if(event.keyCode < 48 || event.keyCode > 57){return false;}" onfocusout="doneEditingTemp()"></span>
+				<span id="max" class="temp"></span>
+			</div>
+			<div id="adjust">
+				<a id="up" href="#" onclick="adjust(1)"></a>
+				<a id="down" href="#" onclick="adjust(-1)"></a>
+			</div>
+		</div>
+	</div>
+	<script>
+		function RoundedCtoF(c) {
+			return Math.round(c * 9/5 + 32);
+		}
+		function FtoC(f) {
+			return ((f - 32) * 5/9);
+		}
+		function gotMode(mode) {
+			document.getElementById("switch").setAttribute("class", mode == 0 ? "off" : "");
+			document.getElementById("off").setAttribute("class", mode == 0 ? "selected" : "");
+			document.getElementById("engine").setAttribute("class", mode == 1 ? "selected" : "");
+			document.getElementById("auto").setAttribute("class", mode == 2 ? "selected" : "");
+		}
+		function setMode(mode) {
+			gotMode(mode);
+			var xmlhttp = new XMLHttpRequest();
+			var url='set?mode=' + mode;
+			xmlhttp.onreadystatechange = handle_var_dump;
+			xmlhttp.open("GET", url, true);
+			xmlhttp.send();
+		}
+		function adjust(amount) {
+			var xmlhttp = new XMLHttpRequest();
+			var url='set?target_temp=' + FtoC(Number(document.getElementById("set_temp").innerHTML) + amount);
+			xmlhttp.onreadystatechange = handle_var_dump;
+			xmlhttp.open("GET", url, true);
+			xmlhttp.send();
+		}
+		function doneEditingTemp() {
+			adjust(0);
+		}
+		function maybeTurnOnFurnace() {
+			if (!confirm("Turn on furnace manually?")) {
+				return;
+			}
+
+			var xmlhttp = new XMLHttpRequest();
+			var url='furnace_on';
+			xmlhttp.onreadystatechange = handle_var_dump;
+			xmlhttp.open("GET", url, true);
+			xmlhttp.send();
+		}
+		function handle_var_dump() {
+			if (this.readyState == 4 && this.status == 200) {
+				var dump = JSON.parse(this.responseText);
+				document.getElementById("min").innerHTML = RoundedCtoF(dump.target_temp - dump.hysteresis_offset);
+				if (document.getElementById("set_temp") != document.activeElement) {
+					document.getElementById("set_temp").innerHTML = RoundedCtoF(dump.target_temp);
+				}
+				document.getElementById("max").innerHTML = RoundedCtoF(dump.target_temp + dump.hysteresis_offset);
+				document.getElementById("cur_temp").innerHTML = dump.temp != null ? RoundedCtoF(dump.temp) : "?";
+				document.getElementById("heat").className = dump.furnace_on_ms ? "on" : "";
+				document.getElementById("fan").className = dump.fan_on_ms ? "on" : "";
+				gotMode(dump.mode);
+			}
+		}
+		function json_refresh() {
+			var xmlhttp = new XMLHttpRequest();
+			var url="var_dump";
+			xmlhttp.onreadystatechange = handle_var_dump;
+			xmlhttp.open("GET", url, true);
+			xmlhttp.send();
+		}
+
+		var refresh_interval_id;
+		function start_autorefresh() {
+			refresh_interval_id = setInterval(json_refresh, 2000);
+		}
+		function stop_autorefresh() {
+			clearInterval(refresh_interval_id);
+		}
+
+		json_refresh();
+		start_autorefresh();
+
+	</script>
+</body>
+</html>

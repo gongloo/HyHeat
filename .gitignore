@@ -1,0 +1,6 @@
+.pio
+.vscode
+src/config.h
+coverage
+lcov.info
+lcov_raw.info
