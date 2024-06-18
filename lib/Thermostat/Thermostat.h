@@ -61,7 +61,7 @@ class Thermostat {
   template <typename Writer>
   void DumpVarsTo(Writer& w) {
     read_lock l(m_);
-    DynamicJsonDocument json_doc(1024);
+    JsonDocument json_doc;
     auto now_in_ms = timestamp_provider_.GetCurrentTimestamp();
     json_doc["temp"] = last_temp_in_c_;
     json_doc["heater_temp"] = last_heater_temp_in_c_;

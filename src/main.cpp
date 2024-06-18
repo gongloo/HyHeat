@@ -85,7 +85,7 @@ void HandleVarDump(AsyncWebServerRequest *request) {
 void HandleDebugDump(AsyncWebServerRequest *request) {
   AsyncResponseStream *response =
       request->beginResponseStream("application/json");
-  DynamicJsonDocument json_doc(1024);
+  JsonDocument json_doc;
   json_doc["build_time"] = BUILD_TIME;
   serializeJsonPretty(json_doc, *response);
   request->send(response);
@@ -185,7 +185,7 @@ void setup() {
 
   // WebSerial
   WebSerial.begin(&server);
-  WebSerial.msgCallback(HandleSerialMessage);
+  WebSerial.onMessage(HandleSerialMessage);
 
   // OTA Updates
   ElegantOTA.begin(&server, OTA_USER, OTA_PASS);
@@ -238,7 +238,7 @@ void loop() {
                      TEMP_SENSOR_NOISE_IN_C);
 #ifdef UDP_STAT_HOST
     Udp.beginPacket(UDP_STAT_HOST, UDP_STAT_PORT);
-    DynamicJsonDocument json_doc(1024);
+    JsonDocument json_doc;
     json_doc["ignored_temp"] = temp_in_c;
     json_doc["last_temp"] = last_temp_read_in_c;
     json_doc["ignored_heater_temp"] = heater_temp_in_c;
