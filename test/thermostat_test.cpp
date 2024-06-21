@@ -21,8 +21,8 @@ class UninitializedThermostatTest : public ::testing::Test {
  protected:
   UninitializedThermostatTest()
       : t_(furnace_hw_, fan_hw_, timestamp_provider_){};
-  StaticJsonDocument<1024> GetVars() {
-    StaticJsonDocument<1024> vars;
+  JsonDocument GetVars() {
+    JsonDocument vars;
     std::string dump;
     t_.DumpVarsTo(dump);
     deserializeJson(vars, dump);
