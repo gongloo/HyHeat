@@ -57,6 +57,7 @@ class Thermostat {
 
   // Manual forced controls.
   void TurnOnFurnace();
+  void TurnOnFan();
 
   template <typename Writer>
   void DumpVarsTo(Writer& w) {

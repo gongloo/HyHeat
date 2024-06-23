@@ -119,6 +119,11 @@ void Thermostat::TurnOnFurnace() {
   TurnOnFurnace(l);
 }
 
+void Thermostat::TurnOnFan() {
+  write_lock l(m_);
+  TurnOnFan(l);
+}
+
 void Thermostat::TurnOnFurnace(const write_lock&) {
   furnace_hw_.TurnOn();
   fan_hw_.TurnOn();

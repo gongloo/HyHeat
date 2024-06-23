@@ -133,6 +133,13 @@ void HandleFurnaceOn(AsyncWebServerRequest *request) {
   HandleVarDump(request);
 }
 
+void HandleFanOn(AsyncWebServerRequest *request) {
+  thermostat.TurnOnFan();
+
+  // Write complete. Do a variable dump, requiring a read lock.
+  HandleVarDump(request);
+}
+
 void HandleSerialMessage(uint8_t *data, size_t len) {
   WebSerial.println("Received data. Ignoring.");
 }
@@ -206,6 +213,7 @@ void setup() {
   server.on("/debug_dump", HandleDebugDump);
   server.on("/set", HandleSet);
   server.on("/furnace_on", HandleFurnaceOn);
+  server.on("/fan_on", HandleFanOn);
   server.serveStatic("/", LittleFS, "/htdocs/")
       .setDefaultFile("thermostat.html");
   server.onNotFound([](AsyncWebServerRequest *request) {

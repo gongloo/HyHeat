@@ -197,7 +197,7 @@ body {
 		<div id="status">
 			<span id="cur_temp" class="temp"></span>
 			<span id="heat" class="off" onclick="maybeTurnOnFurnace()">🔥</span>
-			<span id="fan" class="off">💨</span>
+			<span id="fan" class="off" onclick="maybeTurnOnFan()">💨</span>
 		</div>
 		<div id="set">
 			<div id="set_temps">
@@ -249,6 +249,17 @@ body {
 
 			var xmlhttp = new XMLHttpRequest();
 			var url='furnace_on';
+			xmlhttp.onreadystatechange = handle_var_dump;
+			xmlhttp.open("GET", url, true);
+			xmlhttp.send();
+		}
+		function maybeTurnOnFan() {
+			if (!confirm("Turn on fan manually?")) {
+				return;
+			}
+
+			var xmlhttp = new XMLHttpRequest();
+			var url='fan_on';
 			xmlhttp.onreadystatechange = handle_var_dump;
 			xmlhttp.open("GET", url, true);
 			xmlhttp.send();
