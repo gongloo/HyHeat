@@ -46,6 +46,7 @@ DHT main_dht(MAIN_TEMP_PIN, DHT22);
 float last_temp_read_in_c = NAN;
 DHT heater_dht(HEATER_TEMP_PIN, DHT22);
 float last_heater_temp_read_in_c = NAN;
+int consecutive_ignored_reads = 0;
 AsyncWebServer server(80);
 #ifdef UDP_STAT_HOST
 WiFiUDP Udp;
@@ -55,6 +56,9 @@ ArduinoThermostatHardware fan_hw(FAN_RELAY_PIN);
 #ifdef LED_PIN
 ArduinoThermostatHardware led_hw(LED_PIN);
 #endif  // LED_PIN
+#ifdef TEMP_POWER_PIN
+ArduinoThermostatHardware temp_power_hw(TEMP_POWER_PIN);
+#endif  // TEMP_POWER_PIN
 EspTimerTimestampProvider timestamp_provider;
 Thermostat thermostat(furnace_hw, fan_hw, timestamp_provider);
 
@@ -147,6 +151,13 @@ void setup() {
   led_hw.Initialize();
   led_hw.TurnOn();
 #endif  // LED_PIN
+#ifdef TEMP_POWER_PIN
+  Serial.print("Initializing temp sensor power...");
+  temp_power_hw.Initialize();
+  temp_power_hw.TurnOn();
+  delay(1000);
+  Serial.println(" Initialized.");
+#endif  // TEMP_POWER_PIN
   furnace_hw.Initialize();
   fan_hw.Initialize();
 
@@ -232,10 +243,27 @@ void loop() {
   if (fabs(temp_in_c - last_temp_read_in_c) < TEMP_SENSOR_NOISE_IN_C &&
       fabs(heater_temp_in_c - last_heater_temp_read_in_c) <
           TEMP_SENSOR_NOISE_IN_C) {
+    consecutive_ignored_reads = 0;
     thermostat.OnTempSamples(temp_in_c + MAIN_TEMP_OFFSET, heater_temp_in_c);
   } else {
+    ++consecutive_ignored_reads;
     WebSerial.printf("Values over noise threshold (%fC), ignoring.\n",
                      TEMP_SENSOR_NOISE_IN_C);
+#if defined(RESET_AFTER_IGNORED_READS) && defined(TEMP_POWER_PIN)
+    if (consecutive_ignored_reads > RESET_AFTER_IGNORED_READS) {
+      WebSerial.printf(
+          "Too many consecutive ignored reads (%d), resetting sensors.\d",
+          consecutive_ignored_reads);
+      temp_power_hw.TurnOff();
+      // Wait 5s to drain any capacitors.
+      delay(5000);
+      temp_power_hw.TurnOn();
+      // Wait at least 1s before sending data to the sensor.
+      if (SENSOR_READ_PERIOD_IN_S < 1) {
+        delay(1000);
+      }
+    }
+#endif  // RESET_AFTER_IGNORED_READS && TEMP_POWER_PIN
 #ifdef UDP_STAT_HOST
     Udp.beginPacket(UDP_STAT_HOST, UDP_STAT_PORT);
     JsonDocument json_doc;

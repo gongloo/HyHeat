@@ -7,6 +7,7 @@
 // Hardware pins.
 #define MAIN_TEMP_PIN GPIO_NUM_18
 #define HEATER_TEMP_PIN GPIO_NUM_19
+#define TEMP_POWER_PIN GPIO_NUM_21
 #define FURNACE_RELAY_PIN GPIO_NUM_16
 #define FAN_RELAY_PIN GPIO_NUM_17
 #define LED_PIN \
@@ -22,6 +23,8 @@
 // logic. This can help with temperature sensors that occasionally report bogus
 // values.
 #define TEMP_SENSOR_NOISE_IN_C 5.0
+// Reset temp sensors after this many bogus temp readings.
+#define RESET_AFTER_IGNORED_READS 10  
 
 // Over-The-Air firmware updates are password-protected.
 #define OTA_USER "..."
