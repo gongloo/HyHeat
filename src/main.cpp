@@ -12,6 +12,7 @@
 #include <stdlib.h>
 
 #include "config.h"
+#include "Version.h"
 
 #ifdef UDP_STAT_HOST
 #include <WiFiUdp.h>
@@ -90,7 +91,8 @@ void HandleDebugDump(AsyncWebServerRequest *request) {
   AsyncResponseStream *response =
       request->beginResponseStream("application/json");
   JsonDocument json_doc;
-  json_doc["build_time"] = BUILD_TIME;
+  json_doc["version"] = VERSION;
+  json_doc["build_time"] = BUILD_TIMESTAMP;
   serializeJsonPretty(json_doc, *response);
   request->send(response);
 }
@@ -151,7 +153,7 @@ void setup() {
     delay(10);
   }
   delay(2000);  // Wait for monitor to open.
-  Serial.println("HyHeat initializing...");
+  Serial.printf("HyHeat v%s initializing...\n", VERSION);
 
   // Relays
 #ifdef LED_PIN
@@ -260,7 +262,7 @@ void loop() {
 #if defined(RESET_AFTER_IGNORED_READS) && defined(TEMP_POWER_PIN)
     if (consecutive_ignored_reads > RESET_AFTER_IGNORED_READS) {
       WebSerial.printf(
-          "Too many consecutive ignored reads (%d), resetting sensors.\d",
+          "Too many consecutive ignored reads (%d), resetting sensors.\n",
           consecutive_ignored_reads);
       temp_power_hw.TurnOff();
       // Wait 5s to drain any capacitors.
