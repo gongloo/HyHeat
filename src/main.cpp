@@ -260,7 +260,7 @@ void loop() {
     WebSerial.printf("Values over noise threshold (%fC), ignoring.\n",
                      TEMP_SENSOR_NOISE_IN_C);
 #if defined(RESET_AFTER_IGNORED_READS) && defined(TEMP_POWER_PIN)
-    if (consecutive_ignored_reads > RESET_AFTER_IGNORED_READS) {
+    if (consecutive_ignored_reads % RESET_AFTER_IGNORED_READS == 0) {
       WebSerial.printf(
           "Too many consecutive ignored reads (%d), resetting sensors.\n",
           consecutive_ignored_reads);
