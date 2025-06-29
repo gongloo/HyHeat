@@ -5,3 +5,4 @@ coverage
 lcov.info
 lcov_raw.info
 .version_no_increment
+platformio_upload.ini
