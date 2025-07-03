@@ -45,7 +45,6 @@ class EspTimerTimestampProvider : public Thermostat::TimestampProvider {
 // Hardware/Services
 DHT main_dht(MAIN_TEMP_PIN, DHT22);
 float last_temp_read_in_c = NAN;
-DHT heater_dht(HEATER_TEMP_PIN, DHT22);
 float last_heater_temp_read_in_c = NAN;
 int consecutive_ignored_reads = 0;
 AsyncWebServer server(80);
@@ -146,6 +145,70 @@ void HandleSerialMessage(uint8_t *data, size_t len) {
   WebSerial.println("Received data. Ignoring.");
 }
 
+float getHeaterTempInC(uint32_t sample_mv) {
+  // --- Circuit & Component Constants ---
+  // The fixed resistor value in Ohms.
+  static constexpr float kFixedR = 2200.0f;
+
+  // The voltage supplying the voltage divider.
+  // For best accuracy, measure the actual voltage of your 3.3V pin and use that
+  // value.
+  static constexpr float kSupplyV = 3.3f;
+
+  // --- Steinhart-Hart Coefficients ---
+  // These are the coefficients we carefully calculated for your specific
+  // thermistor.
+  static constexpr float A = 0.000852729f;
+  static constexpr float B = 0.000257773f;
+  static constexpr float C = 1.6183975e-7f;  // Note the e-7 for 10^-7
+
+  // Convert mV to Volts for the next calculation.
+  const float v_out = sample_mv / 1000.0f;
+
+  // Calculate the thermistor's resistance (R_ntc) using the voltage divider
+  // formula.
+  const float r_ntc = kFixedR * (kSupplyV / v_out - 1.0f);
+
+  // Calculate the temperature using the Steinhart-Hart equation.
+  // 1/T = A + B*ln(R) + C*(ln(R))^3
+  const float log_r_ntc = log(r_ntc);
+  const float inv_t_kelvin = A + (B * log_r_ntc) + (C * pow(log_r_ntc, 3));
+  const float t_kelvin = 1.0f / inv_t_kelvin;
+
+  // Convert the temperature from Kelvin to Celsius and return.
+  return t_kelvin - 273.15f;
+}
+
+float getHeaterTempInC() {
+  // Number of samples to read, and return median. Must be odd.
+  static constexpr int kSamplePeriod_in_ms = 2000;
+
+  auto sampling_start = millis();
+  uint32_t samples_mv_sum = 0;
+  uint32_t min_sample_mv = UINT32_MAX;
+  uint32_t max_sample_mv = 0;
+  uint32_t num_samples = 0;
+  while (millis() - sampling_start < kSamplePeriod_in_ms) {
+    auto v_out_mv = analogReadMilliVolts(HEATER_TEMP_PIN);
+    if (v_out_mv == 0) {
+      continue;
+    }
+    samples_mv_sum += v_out_mv;
+    min_sample_mv = std::min(min_sample_mv, v_out_mv);
+    max_sample_mv = std::max(max_sample_mv, v_out_mv);
+    num_samples++;
+  }
+  if (num_samples < 1) {
+    WebSerial.println("No valid samples read from heater temperature sensor.");
+    return std::nanf("");
+  }
+  auto samples_mv_mean = static_cast<float>(samples_mv_sum) / num_samples;
+  WebSerial.printf("Read %d samples in %d ms, ranging %d-%d mV, mean: %.0f mV\n",
+                   num_samples, kSamplePeriod_in_ms, min_sample_mv, max_sample_mv, samples_mv_mean);
+
+  return getHeaterTempInC(samples_mv_mean);
+}
+
 void setup() {
   Serial.begin(115200);
   // Wait for serial console to open.
@@ -172,7 +235,6 @@ void setup() {
 
   // Sensors
   main_dht.begin();
-  heater_dht.begin();
 
   // WiFi
   WiFi.mode(WIFI_STA);
@@ -239,16 +301,43 @@ void loop() {
     ConnectWiFi();
   }
 
-  float temp_in_c = main_dht.readTemperature();
-  float heater_temp_in_c = heater_dht.readTemperature();
-  long sample_timestamp = millis();
-  WebSerial.printf("Temp: %2.1fC Heater: %2.1f %ld ms\n", temp_in_c,
+  // Handle updates.
+  ElegantOTA.loop();
+
+  // Handle WebSerial messages.
+  WebSerial.loop();
+
+  /*
+  if (adc_coversion_done == true) {
+    // Set ISR flag back to false
+    adc_coversion_done = false;
+    // Read data from ADC
+    if (analogContinuousRead(&result, 0)) {
+      sum_heater_temp_in_c += getHeaterTempInC(result->avg_read_mvolts);
+      num_heater_temp_samples++;
+    } else {
+      WebSerial.println("Expected ADC conversion result, but got none.");
+    }
+  }
+  */
+
+  if (millis() - last_sample_timestamp < SENSOR_READ_PERIOD_IN_S * 1000) {
+    // If we haven't waited long enough, skip this read.
+    // Sleep for a bit to save power and wasted effort.
+    delay(100);
+    return;
+  }
+
+  const long sample_timestamp = millis();
+  const float temp_in_c = main_dht.readTemperature();
+  const float heater_temp_in_c = getHeaterTempInC();
+  WebSerial.printf("Temp: %2.1fC Heater: %2.1fC %ld ms\n", temp_in_c,
                    heater_temp_in_c, sample_timestamp - last_sample_timestamp);
   last_sample_timestamp = sample_timestamp;
 
   // Latch our heater/fan state so that we make sure to send stats on change.
-  bool fan_on = thermostat.fan_on();
-  bool furnace_on = thermostat.furnace_on();
+  const bool fan_was_on = thermostat.fan_on();
+  const bool furnace_was_on = thermostat.furnace_on();
 
   if (fabs(temp_in_c - last_temp_read_in_c) < TEMP_SENSOR_NOISE_IN_C &&
       fabs(heater_temp_in_c - last_heater_temp_read_in_c) <
@@ -294,7 +383,8 @@ void loop() {
 #ifdef UDP_STAT_HOST
   if (last_sample_timestamp - last_sample_sent >
           STAT_REPORTING_PERIOD_IN_S * 1000 ||
-      fan_on != thermostat.fan_on() || furnace_on != thermostat.furnace_on()) {
+      fan_was_on != thermostat.fan_on() ||
+      furnace_was_on != thermostat.furnace_on()) {
     Udp.beginPacket(UDP_STAT_HOST, UDP_STAT_PORT);
     thermostat.DumpVarsTo(Udp);
     Udp.endPacket();
@@ -302,12 +392,6 @@ void loop() {
     WebSerial.println("Sent sample via UDP.");
   }
 #endif  // UDP_STAT_HOST
-
-  // Handle updates.
-  ElegantOTA.loop();
-
-  // Sleep for a bit to save power and wasted effort.
-  delay(SENSOR_READ_PERIOD_IN_S * 1000);
 }
 #else
 int main(int arc, char** argv) {

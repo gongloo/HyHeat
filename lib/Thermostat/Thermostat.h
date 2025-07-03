@@ -31,9 +31,8 @@ class Thermostat {
   // Hardcoded config
   // Recommended minimum runtime is 15 minutes.
   static constexpr unsigned int kMinFurnaceRuntimeInS = 15 * 60;
-  // Absolute value.
-  static constexpr float kMinResidualHeatInC = 50;
-  // +/- minimum hysteresis offset.
+  // Minimum heater temperature for opportunistic heat, +/- hysteresis.
+  static constexpr float kMinResidualHeatInC = 70;
 
   // Bounds
   static constexpr float kMinTempTargetInC = 5;
