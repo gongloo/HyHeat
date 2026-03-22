@@ -32,7 +32,7 @@ class Thermostat {
   // Recommended minimum runtime is 15 minutes.
   static constexpr unsigned int kMinFurnaceRuntimeInS = 15 * 60;
   // Minimum heater temperature for opportunistic heat, +/- hysteresis.
-  static constexpr float kMinResidualHeatInC = 70;
+  static constexpr float kMinResidualHeatInC = 55;
 
   // Bounds
   static constexpr float kMinTempTargetInC = 5;
@@ -74,6 +74,7 @@ class Thermostat {
         furnace_on_ ? now_in_ms - furnace_on_timestamp_ : 0;
     json_doc["fan_on_ms"] = fan_on_ ? now_in_ms - fan_on_timestamp_ : 0;
     json_doc["min_furnace_runtime_ms"] = kMinFurnaceRuntimeInS * 1000;
+    json_doc["min_residual_heat"] = kMinResidualHeatInC;
     json_doc["uptime_ms"] = now_in_ms;
     serializeJsonPretty(json_doc, w);
   }
