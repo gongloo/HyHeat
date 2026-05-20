@@ -6,8 +6,11 @@
 	<title>HyHeat Smart Thermostat</title>
 	<link rel="apple-touch-icon" href="apple-touch-icon.png">
 	<link rel="manifest" href="manifest.webmanifest">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-	<meta name="theme-color" content="#ff7b00">
+	<meta name="viewport"
+		content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+	<meta name="theme-color" content="#2e1c0c" />
 	<style type="text/css">
 		@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
@@ -27,7 +30,13 @@
 			--glass-btn-border: rgba(255, 255, 255, 0.06);
 			--glass-btn-active: rgba(255, 123, 0, 0.15);
 			--tag-font-size: 1.8rem;
-			--logo-size: 3rem;
+			--logo-size: 32px;
+
+			/* Safari 26 Liquid Glass Scroll Runway Bleeds */
+			--safari-top-bleed: 62px;
+			--safari-scroll-offset: var(--safari-top-bleed);
+			--safari-chrome-bg: #2e1c0c;
+			/* Warm orange-brown fallback matching the header glow */
 		}
 
 		* {
@@ -38,31 +47,27 @@
 			user-select: none;
 		}
 
-		html,
-		body {
-			position: fixed;
-			overflow: hidden;
-			width: 100%;
-			height: 100%;
+		html {
+			min-height: 100%;
+			overflow-y: scroll;
 			overscroll-behavior: none;
+			background-color: var(--dark-bg);
 		}
 
 		body {
+			min-height: calc(100dvh + var(--safari-scroll-offset));
+			margin: 0;
+			position: relative;
+			isolation: isolate;
 			background-color: var(--dark-bg);
 			color: var(--text-primary);
 			font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			justify-content: flex-start;
-			padding-bottom: 2rem;
 		}
 
-		/* Premium Background Glows */
 		body::before {
 			content: '';
 			position: absolute;
-			top: -10%;
+			top: calc(var(--safari-scroll-offset) - 150px);
 			left: 50%;
 			transform: translateX(-50%);
 			width: 300px;
@@ -72,6 +77,37 @@
 			opacity: 0.15;
 			z-index: -1;
 			pointer-events: none;
+		}
+
+		.app-shell {
+			height: 100dvh;
+			margin-top: var(--safari-scroll-offset);
+			overflow: hidden;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: flex-start;
+			padding-bottom: 2rem;
+			width: 100%;
+		}
+
+		/* Standalone Web App / PWA overrides to bypass top runway offset and account for translucent status bar */
+		@media (display-mode: standalone) {
+			:root {
+				--safari-scroll-offset: 0px;
+			}
+
+			.app-shell {
+				padding-top: env(safe-area-inset-top, 20px);
+			}
+		}
+
+		html.standalone-mode {
+			--safari-scroll-offset: 0px;
+		}
+
+		html.standalone-mode .app-shell {
+			padding-top: env(safe-area-inset-top, 20px);
 		}
 
 		.container {
@@ -98,7 +134,6 @@
 			font-size: var(--logo-size);
 			font-weight: 700;
 			letter-spacing: -0.03em;
-			margin-bottom: 0.5rem;
 		}
 
 		.logo img {
@@ -574,155 +609,157 @@
 </head>
 
 <body>
-	<div class="container">
-		<!-- Header -->
-		<header>
-			<h1 class="logo">
-				<img src="icon-64.png" alt="HyHeat Logo" />
-				<span class="logo-text"><span class="brand-highlight">Hy</span>Heat</span>
-			</h1>
-			<div class="connection-badge">
-				<div id="conn_dot"></div>
-				<span id="conn_text">Connecting</span>
-			</div>
-		</header>
+	<div class="app-shell">
+		<div class="container">
+			<!-- Header -->
+			<header>
+				<h1 class="logo">
+					<img src="icon-96.png" alt="HyHeat Logo" />
+					<span class="logo-text"><span class="brand-highlight">Hy</span>Heat</span>
+				</h1>
+				<div class="connection-badge">
+					<div id="conn_dot"></div>
+					<span id="conn_text">Connecting</span>
+				</div>
+			</header>
 
-		<!-- Main Temp Display -->
-		<div id="temp_ring_outer">
-			<svg id="thermostat_svg" viewBox="0 0 200 200">
-				<!-- Background track -->
-				<path id="track" d="" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="10"
-					stroke-linecap="round" />
-				<!-- Furnace active arc -->
-				<path id="furnace_arc" d="" fill="none" stroke="url(#orange_gradient)" stroke-width="10"
-					stroke-linecap="round" style="opacity: 0; transition: opacity 0.3s ease;" />
-				<!-- Engine active arc -->
-				<path id="engine_arc" d="" fill="none" stroke="url(#gold_gradient)" stroke-width="10"
-					stroke-linecap="round" style="opacity: 0; transition: opacity 0.3s ease;" />
+			<!-- Main Temp Display -->
+			<div id="temp_ring_outer">
+				<svg id="thermostat_svg" viewBox="0 0 200 200">
+					<!-- Background track -->
+					<path id="track" d="" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="10"
+						stroke-linecap="round" />
+					<!-- Furnace active arc -->
+					<path id="furnace_arc" d="" fill="none" stroke="url(#orange_gradient)" stroke-width="10"
+						stroke-linecap="round" style="opacity: 0; transition: opacity 0.3s ease;" />
+					<!-- Engine active arc -->
+					<path id="engine_arc" d="" fill="none" stroke="url(#gold_gradient)" stroke-width="10"
+						stroke-linecap="round" style="opacity: 0; transition: opacity 0.3s ease;" />
 
-				<defs>
-					<linearGradient id="orange_gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-						<stop offset="0%" stop-color="#ff7b00" />
-						<stop offset="100%" stop-color="#ff5100" />
-					</linearGradient>
-					<linearGradient id="gold_gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-						<stop offset="0%" stop-color="#ffd000" />
-						<stop offset="100%" stop-color="#ff9900" />
-					</linearGradient>
+					<defs>
+						<linearGradient id="orange_gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+							<stop offset="0%" stop-color="#ff7b00" />
+							<stop offset="100%" stop-color="#ff5100" />
+						</linearGradient>
+						<linearGradient id="gold_gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+							<stop offset="0%" stop-color="#ffd000" />
+							<stop offset="100%" stop-color="#ff9900" />
+						</linearGradient>
 
-					<!-- Premium Soft Neon Glow Filters -->
-					<filter id="furnace_glow_filter" x="-100%" y="-100%" width="300%" height="300%">
-						<!-- Soft wide ambient bloom -->
-						<feGaussianBlur in="SourceGraphic" stdDeviation="7" result="blur_wide" />
-						<feColorMatrix type="matrix" in="blur_wide" result="glow_wide" values="
+						<!-- Premium Soft Neon Glow Filters -->
+						<filter id="furnace_glow_filter" x="-100%" y="-100%" width="300%" height="300%">
+							<!-- Soft wide ambient bloom -->
+							<feGaussianBlur in="SourceGraphic" stdDeviation="7" result="blur_wide" />
+							<feColorMatrix type="matrix" in="blur_wide" result="glow_wide" values="
 							1 0 0 0 0
 							0 1 0 0 0
 							0 0 1 0 0
 							0 0 0 0.8 0" />
 
-						<!-- Soft core glow -->
-						<feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur_tight" />
-						<feColorMatrix type="matrix" in="blur_tight" result="glow_tight" values="
+							<!-- Soft core glow -->
+							<feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur_tight" />
+							<feColorMatrix type="matrix" in="blur_tight" result="glow_tight" values="
 							1 0 0 0 0
 							0 1 0 0 0
 							0 0 1 0 0
 							0 0 0 1.4 0" />
 
-						<feMerge>
-							<feMergeNode in="glow_wide" />
-							<feMergeNode in="glow_tight" />
-							<feMergeNode in="SourceGraphic" />
-						</feMerge>
-					</filter>
+							<feMerge>
+								<feMergeNode in="glow_wide" />
+								<feMergeNode in="glow_tight" />
+								<feMergeNode in="SourceGraphic" />
+							</feMerge>
+						</filter>
 
-					<filter id="engine_glow_filter" x="-100%" y="-100%" width="300%" height="300%">
-						<!-- Soft wide ambient bloom -->
-						<feGaussianBlur in="SourceGraphic" stdDeviation="7" result="blur_wide" />
-						<feColorMatrix type="matrix" in="blur_wide" result="glow_wide" values="
+						<filter id="engine_glow_filter" x="-100%" y="-100%" width="300%" height="300%">
+							<!-- Soft wide ambient bloom -->
+							<feGaussianBlur in="SourceGraphic" stdDeviation="7" result="blur_wide" />
+							<feColorMatrix type="matrix" in="blur_wide" result="glow_wide" values="
 							1 0 0 0 0
 							0 1 0 0 0
 							0 0 1 0 0
 							0 0 0 0.8 0" />
 
-						<!-- Soft core glow -->
-						<feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur_tight" />
-						<feColorMatrix type="matrix" in="blur_tight" result="glow_tight" values="
+							<!-- Soft core glow -->
+							<feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur_tight" />
+							<feColorMatrix type="matrix" in="blur_tight" result="glow_tight" values="
 							1 0 0 0 0
 							0 1 0 0 0
 							0 0 1 0 0
 							0 0 0 1.4 0" />
 
-						<feMerge>
-							<feMergeNode in="glow_wide" />
-							<feMergeNode in="glow_tight" />
-							<feMergeNode in="SourceGraphic" />
-						</feMerge>
-					</filter>
-				</defs>
+							<feMerge>
+								<feMergeNode in="glow_wide" />
+								<feMergeNode in="glow_tight" />
+								<feMergeNode in="SourceGraphic" />
+							</feMerge>
+						</filter>
+					</defs>
 
-				<!-- Draggable Handles -->
-				<circle id="furnace_handle" cx="0" cy="0" r="9" />
-				<circle id="engine_handle" cx="0" cy="0" r="9" />
-			</svg>
-			<div id="temp_circle_content">
-				<div class="status-icons-wrap">
-					<svg viewBox="0 0 24 24" data-mdi="fire" id="status_fire" class="status-icon"></svg>
-					<svg viewBox="0 0 24 24" data-mdi="radiator" id="status_radiator" class="status-icon"></svg>
-					<svg viewBox="0 0 24 24" data-mdi="fan" id="status_fan" class="status-icon"></svg>
-				</div>
-				<div class="cur-temp-display-wrap">
-					<div class="cur-temp-val-wrapper">
-						<span id="cur_temp">?</span><span id="cur_temp_unit">F</span>
+					<!-- Draggable Handles -->
+					<circle id="furnace_handle" cx="0" cy="0" r="9" />
+					<circle id="engine_handle" cx="0" cy="0" r="9" />
+				</svg>
+				<div id="temp_circle_content">
+					<div class="status-icons-wrap">
+						<svg viewBox="0 0 24 24" data-mdi="fire" id="status_fire" class="status-icon"></svg>
+						<svg viewBox="0 0 24 24" data-mdi="radiator" id="status_radiator" class="status-icon"></svg>
+						<svg viewBox="0 0 24 24" data-mdi="fan" id="status_fan" class="status-icon"></svg>
 					</div>
-				</div>
+					<div class="cur-temp-display-wrap">
+						<div class="cur-temp-val-wrapper">
+							<span id="cur_temp">?</span><span id="cur_temp_unit">F</span>
+						</div>
+					</div>
 
-				<div class="setpoint-sub-display">
-					<div class="setpoint-tag-wrapper">
-						<span class="setpoint-tag" id="tag_furnace">
-							<svg viewBox="0 0 24 24" data-mdi="water-boiler" class="tag-icon"></svg>
-							<strong id="val_furnace">?</strong>°
-						</span>
-					</div>
-					<div class="setpoint-tag-wrapper">
-						<span class="setpoint-tag" id="tag_engine">
-							<svg viewBox="0 0 24 24" data-mdi="engine" class="tag-icon"
-								style="margin-right: 0.4rem;"></svg>
-							<strong id="val_engine">?</strong>°
-						</span>
+					<div class="setpoint-sub-display">
+						<div class="setpoint-tag-wrapper">
+							<span class="setpoint-tag" id="tag_furnace">
+								<svg viewBox="0 0 24 24" data-mdi="water-boiler" class="tag-icon"></svg>
+								<strong id="val_furnace">?</strong>°
+							</span>
+						</div>
+						<div class="setpoint-tag-wrapper">
+							<span class="setpoint-tag" id="tag_engine">
+								<svg viewBox="0 0 24 24" data-mdi="engine" class="tag-icon"
+									style="margin-right: 0.4rem;"></svg>
+								<strong id="val_engine">?</strong>°
+							</span>
+						</div>
 					</div>
 				</div>
 			</div>
+
+			<!-- Segmented controller (System mode select) -->
+			<div class="segmented-control">
+				<button id="btn_off" class="segment-btn">
+					<svg viewBox="0 0 24 24" data-mdi="power"></svg>
+					<span>Off</span>
+				</button>
+				<button id="btn_engine" class="segment-btn">
+					<svg viewBox="0 0 24 24" data-mdi="truck"></svg>
+					<span>Engine</span>
+				</button>
+				<button id="btn_auto" class="segment-btn">
+					<svg viewBox="0 0 24 24" data-mdi="autorenew"></svg>
+					<span>Auto</span>
+				</button>
+			</div>
+
+			<!-- Segmented controller (Fan control select) -->
+			<div class="segmented-control">
+				<button id="btn_fan_auto" class="fan-btn">
+					<svg viewBox="0 0 24 24" data-mdi="fan-auto"></svg>
+					<span>Auto</span>
+				</button>
+				<button id="btn_fan_on" class="fan-btn">
+					<svg viewBox="0 0 24 24" data-mdi="fan"></svg>
+					<span>On</span>
+				</button>
+			</div>
+
+
 		</div>
-
-		<!-- Segmented controller (System mode select) -->
-		<div class="segmented-control">
-			<button id="btn_off" class="segment-btn">
-				<svg viewBox="0 0 24 24" data-mdi="power"></svg>
-				<span>Off</span>
-			</button>
-			<button id="btn_engine" class="segment-btn">
-				<svg viewBox="0 0 24 24" data-mdi="truck"></svg>
-				<span>Engine</span>
-			</button>
-			<button id="btn_auto" class="segment-btn">
-				<svg viewBox="0 0 24 24" data-mdi="autorenew"></svg>
-				<span>Auto</span>
-			</button>
-		</div>
-
-		<!-- Segmented controller (Fan control select) -->
-		<div class="segmented-control">
-			<button id="btn_fan_auto" class="fan-btn">
-				<svg viewBox="0 0 24 24" data-mdi="fan-auto"></svg>
-				<span>Auto</span>
-			</button>
-			<button id="btn_fan_on" class="fan-btn">
-				<svg viewBox="0 0 24 24" data-mdi="fan"></svg>
-				<span>On</span>
-			</button>
-		</div>
-
-
 	</div>
 
 	<script>
@@ -1284,6 +1321,52 @@
 		if (document.visibilityState === 'visible') {
 			startSSE();
 		}
+
+		// ==========================================
+		// 11. SAFARI 26 LIQUID GLASS SCROLL RUNWAY
+		// ==========================================
+		const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+
+		if (isStandalone) {
+			document.documentElement.classList.add('standalone-mode');
+		} else {
+			if ('scrollRestoration' in history) {
+				history.scrollRestoration = 'manual';
+			}
+
+			const initSafariRunway = () => {
+				const offset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safari-scroll-offset')) || 0;
+				if (matchMedia('(max-width: 760px)').matches && window.scrollY !== offset) {
+					window.scrollTo({ top: offset, left: 0, behavior: 'instant' });
+				}
+			};
+
+			// Run immediately and schedule at settled layout intervals to guarantee alignment
+			initSafariRunway();
+			setTimeout(initSafariRunway, 50);
+			setTimeout(initSafariRunway, 150);
+			setTimeout(initSafariRunway, 300);
+
+			window.addEventListener('load', () => {
+				setTimeout(initSafariRunway, 50);
+				setTimeout(initSafariRunway, 150);
+			});
+			window.addEventListener('resize', initSafariRunway);
+			window.addEventListener('orientationchange', initSafariRunway);
+			window.addEventListener('scroll', () => {
+				const offset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safari-scroll-offset')) || 0;
+				if (matchMedia('(max-width: 760px)').matches && window.scrollY !== offset) {
+					window.scrollTo({ top: offset, left: 0, behavior: 'instant' });
+				}
+			});
+		}
+
+		// Lock body rubber-banding globally by blocking touchmove on the document body
+		// This prevents any manual dragging/scrolling of the viewport runway gap
+		document.body.addEventListener('touchmove', (e) => {
+			// Allow normal page interaction, but block standard page panning/scrolling
+			e.preventDefault();
+		}, { passive: false });
 	</script>
 </body>
 

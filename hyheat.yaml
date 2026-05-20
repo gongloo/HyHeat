@@ -517,9 +517,9 @@ html_host:
   - id: ui_icon
     html_file: "data/htdocs/apple-touch-icon.png"
     url: "/apple-touch-icon.png"
-  - id: ui_icon_64
-    html_file: "data/htdocs/icon-64.png"
-    url: "/icon-64.png"
+  - id: ui_icon_96
+    html_file: "data/htdocs/icon-96.png"
+    url: "/icon-96.png"
   - id: ui_favicon
     html_file: "data/htdocs/favicon.ico"
     url: "/favicon.ico"
