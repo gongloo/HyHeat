@@ -104,7 +104,7 @@ Once flashed, the ESP32 will connect to your WiFi network and host the web inter
 
 ---
 
-## 💻 Web Interface & PWA Installation
+## 📲 Web Interface & PWA Installation
 
 The PWA is designed with a premium, mobile-first dashboard aesthetic:
 *   **Dial Control**: The outer ring acts as a double-handle dial. Grab the **Orange handle** to adjust the Furnace Setpoint and the **Gold handle** to adjust the Engine Waste Heat Setpoint.
