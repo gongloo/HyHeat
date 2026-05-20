@@ -1,302 +1,1289 @@
-﻿<html>
+<!DOCTYPE html>
+<html lang="en">
+
 <head>
-<title>HyHeat</title>
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="manifest" href="manifest.webmanifest">
-<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<style type="text/css">
+	<meta charset="UTF-8">
+	<title>HyHeat Smart Thermostat</title>
+	<link rel="apple-touch-icon" href="apple-touch-icon.png">
+	<link rel="manifest" href="manifest.webmanifest">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+	<meta name="theme-color" content="#ff7b00">
+	<style type="text/css">
+		@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
-#set, #status, #adjust, #set_temps, #switch {
-	display: flex;
-	justify-content: space-evenly;
-	align-items: stretch;
-}
+		:root {
+			--primary-orange: #ff7b00;
+			--primary-glow: rgba(255, 123, 0, 0.25);
+			--primary-glow-strong: rgba(255, 123, 0, 0.5);
+			--primary-gradient: linear-gradient(135deg, #ff9e00, #ff5500);
+			--dark-bg: #0c0c0e;
+			--card-bg: rgba(20, 20, 25, 0.7);
+			--card-border: rgba(255, 255, 255, 0.06);
+			--card-border-active: rgba(255, 123, 0, 0.4);
+			--text-primary: #e4e4e9;
+			--text-secondary: #94949e;
+			--text-muted: #4e4e54;
+			--glass-btn-bg: rgba(255, 255, 255, 0.03);
+			--glass-btn-border: rgba(255, 255, 255, 0.06);
+			--glass-btn-active: rgba(255, 123, 0, 0.15);
+			--tag-font-size: 1.8rem;
+			--logo-size: 3rem;
+		}
 
-#status {
-	align-items: center
-}
+		* {
+			box-sizing: border-box;
+			margin: 0;
+			padding: 0;
+			-webkit-tap-highlight-color: transparent;
+			user-select: none;
+		}
 
-#switch, #status, #set {
-	margin-top: 0.25em;
-}
+		html,
+		body {
+			position: fixed;
+			overflow: hidden;
+			width: 100%;
+			height: 100%;
+			overscroll-behavior: none;
+		}
 
-#status, #set {
-	gap: 0.25em;
-}
+		body {
+			background-color: var(--dark-bg);
+			color: var(--text-primary);
+			font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: flex-start;
+			padding-bottom: 2rem;
+		}
 
-#status, #adjust, #set_temps, #switch {
-	border-radius: 0.5em;
-	overflow: hidden;
-}
+		/* Premium Background Glows */
+		body::before {
+			content: '';
+			position: absolute;
+			top: -10%;
+			left: 50%;
+			transform: translateX(-50%);
+			width: 300px;
+			height: 300px;
+			background: var(--primary-orange);
+			filter: blur(140px);
+			opacity: 0.15;
+			z-index: -1;
+			pointer-events: none;
+		}
 
-#adjust, #set_temps {
-	flex-direction: column;
-	flex-grow: 1;
-	text-align: center;
-}
+		.container {
+			width: 100%;
+			max-width: 440px;
+			padding: 1.25rem;
+			display: flex;
+			flex-direction: column;
+			gap: 1.25rem;
+		}
 
-#set {
-	--set-color: black;
-	--triangle-width: 1em;
-	color: var(--set-color);
-}
+		/* Header Section */
+		header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 0.5rem 0.25rem;
+		}
 
-#switch.off ~ #set {
-	opacity: 50%;
-	--set-color: dimgrey;
-}
+		.logo {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			font-size: var(--logo-size);
+			font-weight: 700;
+			letter-spacing: -0.03em;
+			margin-bottom: 0.5rem;
+		}
 
-#set, #set a, #heat, #fan {
-	transition: 0.3s;
-}
+		.logo img {
+			width: var(--logo-size);
+			height: var(--logo-size);
+		}
 
-#heat, #fan {
-	opacity: 25%;
-}
+		.logo .brand-highlight {
+			background: var(--primary-gradient);
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+		}
 
-@keyframes pulsing_glow {
-	50% { text-shadow: 0 0 0.5em darkorange, 0 0 0.5em darkorange, 0 0 0.5em darkorange; }
-}
+		.connection-badge {
+			display: flex;
+			align-items: center;
+			gap: 0.35rem;
+			font-size: 0.75rem;
+			font-weight: 500;
+			color: var(--text-secondary);
+			background: rgba(255, 255, 255, 0.03);
+			border: 1px solid var(--card-border);
+			padding: 0.3rem 0.6rem;
+			border-radius: 2rem;
+			backdrop-filter: blur(8px);
+		}
 
-#heat.on, #fan.on {
-	opacity: 100%;
-	text-shadow: 0 0 0.5em darkorange;
-	animation: pulsing_glow 3s infinite;
-}
+		#conn_dot {
+			width: 6px;
+			height: 6px;
+			background-color: #ef4444;
+			border-radius: 50%;
+			box-shadow: 0 0 8px #ef4444;
+			transition: all 0.3s ease;
+		}
 
-#up::after, #down::after {
-	display: block;
-	width: var(--triangle-width);
-	height: 0.75em;
-	margin: 0.5em auto;
-  background-size: calc(var(--triangle-width) / 2) 100%;
-  background-repeat: no-repeat;
-  background-position: left, right;
-	content: " ";
-}
+		#conn_dot.connected {
+			background-color: #22c55e;
+			box-shadow: 0 0 8px #22c55e;
+		}
 
-#up::after {
-  background-image:
-    linear-gradient(to bottom right, transparent 50%, var(--set-color) 0),
-    linear-gradient(to top right, var(--set-color) 50%, transparent 0);
-}
+		/* Temperature Dial Ring */
+		#temp_ring_outer {
+			position: relative;
+			width: 300px;
+			height: 300px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			align-self: center;
+			margin-top: -1rem;
+			margin-bottom: -1rem;
+		}
 
-#down::after {
-  background-image:
-    linear-gradient(to top right, transparent 50%, var(--set-color) 0),
-    linear-gradient(to bottom right, var(--set-color) 50%, transparent 0);
-}
+		#furnace_arc,
+		#engine_arc {
+			transition: opacity 0.3s ease, filter 0.3s ease, stroke-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		}
 
-#down {
-	display: block;
-	width: 100%;
-	margin: 0;
-	border-top: 1px solid var(--divider-color);
-}
+		.furnace-glow {
+			stroke-width: 11px;
+			filter: url(#furnace_glow_filter);
+			animation: furnace-glow-pulse 2.2s infinite ease-in-out;
+		}
 
-#up:active, #down:active {
-	background: linear-gradient(#aaa, #ddd);
-}
+		.engine-glow {
+			stroke-width: 11px;
+			filter: url(#engine_glow_filter);
+			animation: engine-glow-pulse 2.2s infinite ease-in-out;
+		}
 
-#min, #max {
-	font-size: 50%;
-	opacity: 50%;
-}
+		@keyframes furnace-glow-pulse {
+			0% {
+				opacity: 0.75;
+			}
 
-#min {
-	order: 1;
-}
-#max {
-	order: -1;
-}
+			50% {
+				opacity: 1.0;
+			}
 
-#status, #set_temps, #adjust, #switch {
-	background: linear-gradient(#ddd, #aaa);
-}
+			100% {
+				opacity: 0.75;
+			}
+		}
 
-body {
-	background-color: black;
-	font-family: sans-serif;
-	font-weight: bold;
-	font-size: 48pt;
-	margin: 0;
-}
+		@keyframes engine-glow-pulse {
+			0% {
+				opacity: 0.75;
+			}
 
-#contents {
-	width: 5em;
-	margin-left: auto;
-	margin-right: auto;
-	--divider-color: dimgrey;
-}
+			50% {
+				opacity: 1.0;
+			}
 
-#title {
-	font-size: 40pt;
-	width: 100%;
-	text-align: center;
-	padding: 0.5em 0;
-	color: black;
-	background: linear-gradient(darkorange, #be6800);
-}
+			100% {
+				opacity: 0.75;
+			}
+		}
 
-#title .emphasis {
-	color: silver;
-	text-shadow: 0 0 0.05em black;
-}
+		#temp_circle_content {
+			position: absolute;
+			width: 236px;
+			height: 236px;
+			border-radius: 50%;
+			background: radial-gradient(135deg, rgba(20, 20, 25, 0.95) 0%, rgba(10, 10, 12, 0.98) 100%);
+			box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.02), 0 10px 20px rgba(0, 0, 0, 0.4);
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			z-index: 1;
+			pointer-events: none;
+		}
 
-#switch div {
-	height: 2em;
-	cursor: pointer;
-	font-weight: bolder;
-	font-size: 50%;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	margin: 0;
-	color: dimgrey;
-	border-left: 1px solid var(--divider-color);
-	flex-grow: 1;
-}
+		#thermostat_svg {
+			width: 320px;
+			height: 320px;
+			position: absolute;
+			z-index: 2;
+			touch-action: none;
+			overflow: visible;
+		}
 
-#switch div.selected {
-	color: black;
-	background: linear-gradient(#be6800, darkorange);
-}
+		.setpoint-sub-display {
+			display: flex;
+			gap: 0.5rem;
+			pointer-events: none;
+		}
 
-#switch #off.selected {
-	color: silver;
-	background: linear-gradient(#333, #666);
-}
+		.setpoint-tag-wrapper {
+			width: 4.5rem;
+			height: 2.1rem;
+			position: relative;
+			display: inline-block;
+		}
 
-#switch div:first-child {
-	border: none;
-	padding-left: 0.5ex;
-	border-radius: 1em 0em 0em 1em;
-}
+		.setpoint-tag {
+			position: absolute;
+			left: 50%;
+			top: 50%;
+			transform: translate(-50%, -50%) scale(0.55);
+			transform-origin: center;
+			font-size: var(--tag-font-size);
+			font-weight: 700;
+			padding: 0.6rem 1.2rem;
+			border-radius: 2.75rem;
+			text-transform: uppercase;
+			letter-spacing: 0.03em;
+			white-space: nowrap;
+			display: inline-flex;
+			align-items: center;
+			gap: 0.25rem;
+			transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+				opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+				background-color 0.3s ease,
+				border-color 0.3s ease,
+				box-shadow 0.3s ease;
+			will-change: transform, opacity;
+		}
 
-#switch div:last-child {
-	padding-right: 0.5ex;
-	border-radius: 0em 1em 1em 0em;
-}
+		#tag_furnace {
+			background: rgba(255, 123, 0, 0.1);
+			color: #ff9f1c;
+			border: 1px solid rgba(255, 123, 0, 0.18);
+		}
 
-</style>
-<meta name="theme-color" content="darkorange">
-<script>
-  if('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js');
-  };
-</script>
+		#tag_engine {
+			background: rgba(255, 200, 0, 0.08);
+			color: #ffe600;
+			border: 1px solid rgba(255, 200, 0, 0.15);
+		}
+
+		.setpoint-tag .tag-icon {
+			width: var(--tag-font-size);
+			height: var(--tag-font-size);
+			fill: currentColor;
+			display: inline-block;
+		}
+
+		.cur-temp-display-wrap {
+			display: flex;
+			align-items: flex-start;
+			justify-content: center;
+			margin-top: 0.4rem;
+			margin-bottom: 0.75rem;
+			transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+				opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+			will-change: transform, opacity;
+		}
+
+		.cur-temp-val-wrapper {
+			position: relative;
+			display: inline-block;
+		}
+
+		#cur_temp {
+			font-size: 5.25rem;
+			font-weight: 300;
+			line-height: 0.82;
+			letter-spacing: -0.04em;
+		}
+
+		#cur_temp_unit {
+			font-size: 1.75rem;
+			font-weight: 300;
+			line-height: 0.82;
+			color: var(--text-muted);
+			position: absolute;
+			left: 100%;
+			top: 0.25rem;
+			margin-left: 0.15rem;
+		}
+
+		#cur_temp_unit::before {
+			content: "°";
+		}
+
+		/* Draggable Setpoint Dial Handles */
+		#furnace_handle,
+		#engine_handle {
+			cursor: grab;
+			opacity: 0;
+			stroke: var(--text-primary);
+			stroke-width: 2.5px;
+			transition: opacity 0.3s ease, r 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), stroke-width 0.22s ease;
+		}
+
+		#furnace_handle:active,
+		#engine_handle:active {
+			r: 12px;
+			stroke-width: 3.5px;
+			cursor: grabbing;
+		}
+
+		#furnace_handle {
+			fill: #ff7b00;
+		}
+
+		#engine_handle {
+			fill: #ffd000;
+		}
+
+		.offline-lockout {
+			pointer-events: none;
+			opacity: 0.55;
+			filter: grayscale(0.4) blur(0.3px);
+			transition: opacity 0.4s ease, filter 0.4s ease;
+		}
+
+		.status-icons-wrap {
+			display: flex;
+			gap: 0.75rem;
+			justify-content: center;
+			align-items: center;
+			transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+				opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+			will-change: transform, opacity;
+		}
+
+		.status-icon {
+			width: 1.5rem;
+			height: 1.5rem;
+			fill: var(--text-muted);
+			transition: fill 0.3s ease, filter 0.3s ease;
+		}
+
+		#status_fire.active-fire {
+			fill: var(--primary-orange);
+			filter: drop-shadow(0 0 0.35rem var(--primary-glow-strong));
+			animation: status-flame-pulse 1.5s infinite ease-in-out alternate;
+			transform-origin: center;
+		}
+
+		#status_radiator.active-radiator {
+			fill: #ffd000;
+			filter: drop-shadow(0 0 0.35rem rgba(255, 208, 0, 0.5));
+			animation: status-radiator-pulse 1.8s infinite ease-in-out alternate;
+			transform-origin: center;
+		}
+
+		#status_fan.active-fan {
+			fill: var(--text-primary);
+			filter: drop-shadow(0 0 0.35rem rgba(255, 255, 255, 0.35));
+			animation: status-fan-spin 2s infinite linear;
+			transform-origin: center;
+		}
+
+		/* Interactive Adjusting State Animations (Scale-Down Technique) */
+		#temp_circle_content.adjusting-furnace .status-icons-wrap,
+		#temp_circle_content.adjusting-furnace .cur-temp-display-wrap {
+			transform: translateY(1.125rem) scale(0.8);
+			opacity: 0;
+		}
+
+		#temp_circle_content.adjusting-furnace #tag_engine {
+			transform: translate(-50%, -50%) scale(0.3);
+			opacity: 0;
+			pointer-events: none;
+		}
+
+		#temp_circle_content.adjusting-furnace #tag_furnace {
+			transform: translate(calc(-50% + 2.5rem), calc(-50% - 3rem)) scale(1.0);
+			background: rgba(255, 123, 0, 0.25);
+			border-color: rgba(255, 123, 0, 0.7);
+			box-shadow: 0 0.5rem 2rem rgba(255, 123, 0, 0.35);
+		}
+
+		#temp_circle_content.adjusting-engine .status-icons-wrap,
+		#temp_circle_content.adjusting-engine .cur-temp-display-wrap {
+			transform: translateY(1.125rem) scale(0.8);
+			opacity: 0;
+		}
+
+		#temp_circle_content.adjusting-engine #tag_furnace {
+			transform: translate(-50%, -50%) scale(0.3);
+			opacity: 0;
+			pointer-events: none;
+		}
+
+		#temp_circle_content.adjusting-engine #tag_engine {
+			transform: translate(calc(-50% - 2.5rem), calc(-50% - 3rem)) scale(1.0);
+			background: rgba(255, 200, 0, 0.2);
+			border-color: rgba(255, 200, 0, 0.6);
+			box-shadow: 0 0.5rem 2rem rgba(255, 200, 0, 0.3);
+		}
+
+		@keyframes status-flame-pulse {
+			0% {
+				transform: scale(1) rotate(-3deg);
+				filter: drop-shadow(0 0 0.25rem rgba(255, 123, 0, 0.4));
+			}
+
+			50% {
+				transform: scale(1.08) rotate(0deg);
+				filter: drop-shadow(0 0 0.5rem rgba(255, 123, 0, 0.7));
+			}
+
+			100% {
+				transform: scale(1.02) rotate(3deg);
+				filter: drop-shadow(0 0 0.3rem rgba(255, 123, 0, 0.5));
+			}
+		}
+
+		@keyframes status-fan-spin {
+			0% {
+				transform: rotate(0deg);
+			}
+
+			100% {
+				transform: rotate(360deg);
+			}
+		}
+
+		@keyframes status-radiator-pulse {
+			0% {
+				transform: scale(1);
+				filter: drop-shadow(0 0 0.25rem rgba(255, 208, 0, 0.3));
+			}
+
+			50% {
+				transform: scale(1.06);
+				filter: drop-shadow(0 0 0.45rem rgba(255, 208, 0, 0.6));
+			}
+
+			100% {
+				transform: scale(1.02);
+				filter: drop-shadow(0 0 0.3rem rgba(255, 208, 0, 0.4));
+			}
+		}
+
+		/* Segmented Controller (Mode & Fan Select) */
+		.segmented-control {
+			background: rgba(18, 18, 22, 0.6);
+			border: 1px solid var(--card-border);
+			border-radius: 1rem;
+			padding: 0.3rem;
+			display: flex;
+			width: 100%;
+			position: relative;
+		}
+
+		.segment-btn,
+		.fan-btn {
+			flex: 1;
+			background: transparent;
+			border: none;
+			color: var(--text-secondary);
+			font-family: inherit;
+			font-size: 0.85rem;
+			font-weight: 500;
+			padding: 0.75rem 0;
+			cursor: pointer;
+			border-radius: 0.75rem;
+			transition: all 0.25s ease;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 0.2rem;
+		}
+
+		.segment-btn svg,
+		.fan-btn svg {
+			width: 18px;
+			height: 18px;
+			fill: currentColor;
+			opacity: 0.6;
+			transition: opacity 0.25s ease;
+		}
+
+		.segment-btn:active:not(.selected),
+		.fan-btn:active:not(.selected) {
+			background: rgba(255, 255, 255, 0.03);
+		}
+
+		/* Mode Button Selected State */
+		.segment-btn.selected {
+			color: #000;
+			font-weight: 600;
+			background: var(--primary-gradient);
+			box-shadow: 0 4px 12px var(--primary-glow);
+		}
+
+		.segment-btn.selected svg {
+			fill: #000;
+			opacity: 1;
+		}
+
+		/* Fan Button Selected State */
+		.fan-btn.selected {
+			color: var(--primary-orange);
+			font-weight: 600;
+			background: rgba(255, 123, 0, 0.12);
+			box-shadow: 0 2px 8px rgba(255, 123, 0, 0.15);
+			border: 1px solid rgba(255, 123, 0, 0.18);
+		}
+
+		.fan-btn.selected svg {
+			opacity: 1;
+		}
+
+
+		/* Soft pulse animation for heating states */
+		.heating-pulse {
+			animation: pulsing-orange 2s infinite alternate ease-in-out;
+		}
+
+		@keyframes pulsing-orange {
+			0% {
+				text-shadow: 0 0 4px rgba(255, 123, 0, 0.2);
+			}
+
+			100% {
+				text-shadow: 0 0 16px rgba(255, 123, 0, 0.7), 0 0 24px rgba(255, 123, 0, 0.4);
+			}
+		}
+
+		/* Soft pulse animation for residual heating states */
+		.residual-heating-pulse {
+			animation: pulsing-yellow 2s infinite alternate ease-in-out;
+		}
+
+		@keyframes pulsing-yellow {
+			0% {
+				text-shadow: 0 0 4px rgba(255, 208, 0, 0.2);
+			}
+
+			100% {
+				text-shadow: 0 0 16px rgba(255, 208, 0, 0.7), 0 0 24px rgba(255, 208, 0, 0.4);
+			}
+		}
+	</style>
 </head>
-<body class="off">
-	<div id="title"><span class="emphasis">Hy</span>Heat</div>
-	<div id="contents">
-		<div id="switch">
-			<div id="off" onclick="setMode(0)">Off</div>
-			<div id="engine" onclick="setMode(1)">Engine</div>
-			<div id="auto" onclick="setMode(2)">Auto</div>
-		</div>
-		<div id="status">
-			<span id="cur_temp" class="temp"></span>
-			<span id="heat" class="off" onclick="maybeTurnOnFurnace()">🔥</span>
-			<span id="fan" class="off" onclick="maybeTurnOnFan()">💨</span>
-		</div>
-		<div id="set">
-			<div id="set_temps">
-				<span id="min" class="temp"></span>
-				<span id="set_temp" class="temp" contenteditable="true" inputmode="decimal" onKeypress="if(event.keyCode < 48 || event.keyCode > 57){return false;}" onfocusout="doneEditingTemp()"></span>
-				<span id="max" class="temp"></span>
+
+<body>
+	<div class="container">
+		<!-- Header -->
+		<header>
+			<h1 class="logo">
+				<img src="icon-64.png" alt="HyHeat Logo" />
+				<span class="logo-text"><span class="brand-highlight">Hy</span>Heat</span>
+			</h1>
+			<div class="connection-badge">
+				<div id="conn_dot"></div>
+				<span id="conn_text">Connecting</span>
 			</div>
-			<div id="adjust">
-				<a id="up" href="#" onclick="adjust(1)"></a>
-				<a id="down" href="#" onclick="adjust(-1)"></a>
+		</header>
+
+		<!-- Main Temp Display -->
+		<div id="temp_ring_outer">
+			<svg id="thermostat_svg" viewBox="0 0 200 200">
+				<!-- Background track -->
+				<path id="track" d="" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="10"
+					stroke-linecap="round" />
+				<!-- Furnace active arc -->
+				<path id="furnace_arc" d="" fill="none" stroke="url(#orange_gradient)" stroke-width="10"
+					stroke-linecap="round" style="opacity: 0; transition: opacity 0.3s ease;" />
+				<!-- Engine active arc -->
+				<path id="engine_arc" d="" fill="none" stroke="url(#gold_gradient)" stroke-width="10"
+					stroke-linecap="round" style="opacity: 0; transition: opacity 0.3s ease;" />
+
+				<defs>
+					<linearGradient id="orange_gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+						<stop offset="0%" stop-color="#ff7b00" />
+						<stop offset="100%" stop-color="#ff5100" />
+					</linearGradient>
+					<linearGradient id="gold_gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+						<stop offset="0%" stop-color="#ffd000" />
+						<stop offset="100%" stop-color="#ff9900" />
+					</linearGradient>
+
+					<!-- Premium Soft Neon Glow Filters -->
+					<filter id="furnace_glow_filter" x="-100%" y="-100%" width="300%" height="300%">
+						<!-- Soft wide ambient bloom -->
+						<feGaussianBlur in="SourceGraphic" stdDeviation="7" result="blur_wide" />
+						<feColorMatrix type="matrix" in="blur_wide" result="glow_wide" values="
+							1 0 0 0 0
+							0 1 0 0 0
+							0 0 1 0 0
+							0 0 0 0.8 0" />
+
+						<!-- Soft core glow -->
+						<feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur_tight" />
+						<feColorMatrix type="matrix" in="blur_tight" result="glow_tight" values="
+							1 0 0 0 0
+							0 1 0 0 0
+							0 0 1 0 0
+							0 0 0 1.4 0" />
+
+						<feMerge>
+							<feMergeNode in="glow_wide" />
+							<feMergeNode in="glow_tight" />
+							<feMergeNode in="SourceGraphic" />
+						</feMerge>
+					</filter>
+
+					<filter id="engine_glow_filter" x="-100%" y="-100%" width="300%" height="300%">
+						<!-- Soft wide ambient bloom -->
+						<feGaussianBlur in="SourceGraphic" stdDeviation="7" result="blur_wide" />
+						<feColorMatrix type="matrix" in="blur_wide" result="glow_wide" values="
+							1 0 0 0 0
+							0 1 0 0 0
+							0 0 1 0 0
+							0 0 0 0.8 0" />
+
+						<!-- Soft core glow -->
+						<feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur_tight" />
+						<feColorMatrix type="matrix" in="blur_tight" result="glow_tight" values="
+							1 0 0 0 0
+							0 1 0 0 0
+							0 0 1 0 0
+							0 0 0 1.4 0" />
+
+						<feMerge>
+							<feMergeNode in="glow_wide" />
+							<feMergeNode in="glow_tight" />
+							<feMergeNode in="SourceGraphic" />
+						</feMerge>
+					</filter>
+				</defs>
+
+				<!-- Draggable Handles -->
+				<circle id="furnace_handle" cx="0" cy="0" r="9" />
+				<circle id="engine_handle" cx="0" cy="0" r="9" />
+			</svg>
+			<div id="temp_circle_content">
+				<div class="status-icons-wrap">
+					<svg viewBox="0 0 24 24" data-mdi="fire" id="status_fire" class="status-icon"></svg>
+					<svg viewBox="0 0 24 24" data-mdi="radiator" id="status_radiator" class="status-icon"></svg>
+					<svg viewBox="0 0 24 24" data-mdi="fan" id="status_fan" class="status-icon"></svg>
+				</div>
+				<div class="cur-temp-display-wrap">
+					<div class="cur-temp-val-wrapper">
+						<span id="cur_temp">?</span><span id="cur_temp_unit">F</span>
+					</div>
+				</div>
+
+				<div class="setpoint-sub-display">
+					<div class="setpoint-tag-wrapper">
+						<span class="setpoint-tag" id="tag_furnace">
+							<svg viewBox="0 0 24 24" data-mdi="water-boiler" class="tag-icon"></svg>
+							<strong id="val_furnace">?</strong>°
+						</span>
+					</div>
+					<div class="setpoint-tag-wrapper">
+						<span class="setpoint-tag" id="tag_engine">
+							<svg viewBox="0 0 24 24" data-mdi="engine" class="tag-icon"
+								style="margin-right: 0.25rem;"></svg>
+							<strong id="val_engine">?</strong>°
+						</span>
+					</div>
+				</div>
 			</div>
 		</div>
+
+		<!-- Segmented controller (System mode select) -->
+		<div class="segmented-control">
+			<button id="btn_off" class="segment-btn">
+				<svg viewBox="0 0 24 24" data-mdi="power"></svg>
+				<span>Off</span>
+			</button>
+			<button id="btn_engine" class="segment-btn">
+				<svg viewBox="0 0 24 24" data-mdi="truck"></svg>
+				<span>Engine</span>
+			</button>
+			<button id="btn_auto" class="segment-btn">
+				<svg viewBox="0 0 24 24" data-mdi="autorenew"></svg>
+				<span>Auto</span>
+			</button>
+		</div>
+
+		<!-- Segmented controller (Fan control select) -->
+		<div class="segmented-control">
+			<button id="btn_fan_auto" class="fan-btn">
+				<svg viewBox="0 0 24 24" data-mdi="fan-auto"></svg>
+				<span>Auto</span>
+			</button>
+			<button id="btn_fan_on" class="fan-btn">
+				<svg viewBox="0 0 24 24" data-mdi="fan"></svg>
+				<span>On</span>
+			</button>
+		</div>
+
+
 	</div>
+
 	<script>
-		function RoundedCtoF(c) {
-			return Math.round(c * 9/5 + 32);
+		// ==========================================
+		// 1. CONFIGURATION & PWA REGISTRATION
+		// ==========================================
+		const basePath = (() => {
+			const path = window.location.pathname;
+			const idx = path.lastIndexOf("/thermostat");
+			return idx !== -1 ? path.substring(0, idx) : "";
+		})();
+
+		if ('serviceWorker' in navigator) {
+			navigator.serviceWorker.register('sw.js');
 		}
-		function FtoC(f) {
-			return ((f - 32) * 5/9);
-		}
-		function gotMode(mode) {
-			document.getElementById("switch").setAttribute("class", mode == 0 ? "off" : "");
-			document.getElementById("off").setAttribute("class", mode == 0 ? "selected" : "");
-			document.getElementById("engine").setAttribute("class", mode == 1 ? "selected" : "");
-			document.getElementById("auto").setAttribute("class", mode == 2 ? "selected" : "");
-		}
-		function setMode(mode) {
-			gotMode(mode);
-			var xmlhttp = new XMLHttpRequest();
-			var url='set?mode=' + mode;
-			xmlhttp.onreadystatechange = handle_var_dump;
-			xmlhttp.open("GET", url, true);
-			xmlhttp.send();
-		}
-		function adjust(amount) {
-			var xmlhttp = new XMLHttpRequest();
-			var url='set?target_temp=' + FtoC(Number(document.getElementById("set_temp").innerHTML) + amount);
-			xmlhttp.onreadystatechange = handle_var_dump;
-			xmlhttp.open("GET", url, true);
-			xmlhttp.send();
-		}
-		function doneEditingTemp() {
-			adjust(0);
-		}
-		function maybeTurnOnFurnace() {
-			if (!confirm("Turn on furnace manually?")) {
-				return;
+
+		// ==========================================
+		// 2. DOM CACHE (Prevents redundant querySelector operations)
+		// ==========================================
+		const el = {
+			thermostatSvg: document.getElementById('thermostat_svg'),
+			tempCircleContent: document.getElementById('temp_circle_content'),
+			curTemp: document.getElementById('cur_temp'),
+			curTempUnit: document.getElementById('cur_temp_unit'),
+			valFurnace: document.getElementById('val_furnace'),
+			valEngine: document.getElementById('val_engine'),
+			tagFurnace: document.getElementById('tag_furnace'),
+			tagEngine: document.getElementById('tag_engine'),
+			track: document.getElementById('track'),
+			furnaceArc: document.getElementById('furnace_arc'),
+			engineArc: document.getElementById('engine_arc'),
+			furnaceHandle: document.getElementById('furnace_handle'),
+			engineHandle: document.getElementById('engine_handle'),
+			statusFire: document.getElementById('status_fire'),
+			statusRadiator: document.getElementById('status_radiator'),
+			statusFan: document.getElementById('status_fan'),
+			tempRingOuter: document.getElementById('temp_ring_outer'),
+			connDot: document.getElementById('conn_dot'),
+			connText: document.getElementById('conn_text'),
+			btnOff: document.getElementById('btn_off'),
+			btnEngine: document.getElementById('btn_engine'),
+			btnAuto: document.getElementById('btn_auto'),
+			btnFanAuto: document.getElementById('btn_fan_auto'),
+			btnFanOn: document.getElementById('btn_fan_on'),
+			segmentedControls: document.querySelectorAll('.segmented-control')
+		};
+
+		// ==========================================
+		// 3. MATHEMATICAL MODELS & CONSTANTS
+		// ==========================================
+		const START_ANGLE = 135 * Math.PI / 180; // Dial arc start position (in radians)
+		const END_ANGLE = 405 * Math.PI / 180; // Dial arc end position (in radians)
+		const ANGLE_RANGE = END_ANGLE - START_ANGLE;
+		const CENTER_X = 100;
+		const CENTER_Y = 100;
+		const DIAL_RADIUS = 80;
+		const MIN_OFFSET = 1.0; // 1.0 °C target temp buffer limit to protect mechanical equipment
+
+		// ==========================================
+		// 4. SYSTEM STATE
+		// ==========================================
+		const state = {
+			curTempC: null,
+			furnaceSetTemp: null,
+			engineSetTemp: null,
+			minTempC: 5.0,  // Safe static limit defaults (used if API fails/delays)
+			maxTempC: 38.0,
+			furnaceMode: 'OFF',
+			engineMode: 'OFF',
+			fanMode: 'Auto',
+			furnaceActive: false,
+			fanActive: false,
+			residualActive: false
+		};
+
+		// ==========================================
+		// 5. HELPER FUNCTIONS
+		// ==========================================
+		const getSystemMode = () => {
+			if (state.furnaceMode === 'HEAT' && state.engineMode === 'HEAT') return 'Auto';
+			if (state.furnaceMode === 'OFF' && state.engineMode === 'HEAT') return 'Engine';
+			return 'Off';
+		};
+
+		const isFahrenheitLocale = () => {
+			const fahrenheitCountries = ['US', 'BS', 'BZ', 'KY', 'PW', 'MH', 'FM', 'LR', 'MM'];
+			return [navigator.language, ...(navigator.languages || [])]
+				.filter(Boolean)
+				.some(locale => {
+					const country = locale.split('-')[1]?.toUpperCase();
+					return fahrenheitCountries.includes(country) || locale.toUpperCase() === 'EN-US';
+				});
+		};
+		const useFahrenheit = isFahrenheitLocale();
+
+		const formatTemp = (c, decimals = 0) => {
+			if (c == null || isNaN(c)) return "?";
+			const temp = useFahrenheit ? (c * 9 / 5 + 32) : c;
+			return temp.toFixed(decimals);
+		};
+
+		const tempToAngle = (t) => {
+			const pct = (t - state.minTempC) / (state.maxTempC - state.minTempC);
+			return START_ANGLE + pct * ANGLE_RANGE;
+		};
+
+		const angleDiff = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+
+		const polarToCartesian = (cx, cy, r, angleRad) => ({
+			x: cx + r * Math.cos(angleRad),
+			y: cy + r * Math.sin(angleRad)
+		});
+
+		const describeArc = (cx, cy, r, sAngle, eAngle) => {
+			const start = polarToCartesian(cx, cy, r, eAngle);
+			const end = polarToCartesian(cx, cy, r, sAngle);
+			const largeArcFlag = eAngle - sAngle <= Math.PI ? "0" : "1";
+			return [
+				"M", start.x, start.y,
+				"A", r, r, 0, largeArcFlag, 0, end.x, end.y
+			].join(" ");
+		};
+
+		const post = (endpoint, params = {}) => {
+			const query = new URLSearchParams(params).toString();
+			const url = `${basePath}${endpoint}${query ? '?' + query : ''}`;
+			return fetch(url, { method: 'POST' })
+				.then(res => {
+					if (!res.ok) throw new Error(`HTTP ${res.status}`);
+					return res;
+				})
+				.catch(err => console.error(`Error POSTing to ${endpoint}:`, err));
+		};
+		// ==========================================
+		// 6. POINTER DRAG & INTERACTIVE GESTURES
+		// ==========================================
+		let activeHandle = null;
+		let initialFurnaceSetTemp = 20.0;
+		let initialEngineSetTemp = 22.0;
+
+		function handlePointerDown(e) {
+			if (!el.thermostatSvg || state.furnaceSetTemp == null || state.engineSetTemp == null) return;
+			const rect = el.thermostatSvg.getBoundingClientRect();
+			const x = e.clientX - rect.left - rect.width / 2;
+			const y = e.clientY - rect.top - rect.height / 2;
+			const angle = Math.atan2(y, x);
+
+			const angleF = tempToAngle(state.furnaceSetTemp);
+			const angleE = tempToAngle(state.engineSetTemp);
+
+			activeHandle = angleDiff(angle, angleF) < angleDiff(angle, angleE) ? 'furnace' : 'engine';
+
+			if (el.tempCircleContent) {
+				el.tempCircleContent.classList.remove('adjusting-furnace', 'adjusting-engine');
+				el.tempCircleContent.classList.add(activeHandle === 'furnace' ? 'adjusting-furnace' : 'adjusting-engine');
 			}
 
-			var xmlhttp = new XMLHttpRequest();
-			var url='furnace_on';
-			xmlhttp.onreadystatechange = handle_var_dump;
-			xmlhttp.open("GET", url, true);
-			xmlhttp.send();
-		}
-		function maybeTurnOnFan() {
-			if (!confirm("Turn on fan manually?")) {
-				return;
-			}
+			initialFurnaceSetTemp = state.furnaceSetTemp;
+			initialEngineSetTemp = state.engineSetTemp;
 
-			var xmlhttp = new XMLHttpRequest();
-			var url='fan_on';
-			xmlhttp.onreadystatechange = handle_var_dump;
-			xmlhttp.open("GET", url, true);
-			xmlhttp.send();
+			el.thermostatSvg.setPointerCapture(e.pointerId);
+			handlePointerMove(e);
 		}
-		function handle_var_dump() {
-			if (this.readyState == 4 && this.status == 200) {
-				var dump = JSON.parse(this.responseText);
-				document.getElementById("min").innerHTML = RoundedCtoF(dump.target_temp - dump.hysteresis_offset);
-				if (document.getElementById("set_temp") != document.activeElement) {
-					document.getElementById("set_temp").innerHTML = RoundedCtoF(dump.target_temp);
+
+		function handlePointerMove(e) {
+			if (!activeHandle || !el.thermostatSvg) return;
+			const rect = el.thermostatSvg.getBoundingClientRect();
+			const x = e.clientX - rect.left - rect.width / 2;
+			const y = e.clientY - rect.top - rect.height / 2;
+			let angle = Math.atan2(y, x);
+
+			let normalized = angle;
+			while (normalized < START_ANGLE) normalized += 2 * Math.PI;
+			while (normalized > END_ANGLE) normalized -= 2 * Math.PI;
+
+			// Handle bottom dead-zone proximity to prevent min/max temperature jumping
+			if (normalized < START_ANGLE) {
+				if (normalized > 1.5708) { // 90 degrees (pointing straight down)
+					normalized = START_ANGLE;
+				} else {
+					normalized = END_ANGLE;
 				}
-				document.getElementById("max").innerHTML = RoundedCtoF(dump.target_temp + dump.hysteresis_offset);
-				document.getElementById("cur_temp").innerHTML = dump.temp != null ? RoundedCtoF(dump.temp) : "?";
-				document.getElementById("heat").className = dump.furnace_on_ms ? "on" : "";
-				document.getElementById("fan").className = dump.fan_on_ms ? "on" : "";
-				gotMode(dump.mode);
+			}
+
+			const pct = (normalized - START_ANGLE) / ANGLE_RANGE;
+			let temp = state.minTempC + pct * (state.maxTempC - state.minTempC);
+
+			temp = Math.round(temp * 2) / 2;
+
+			let changed = false;
+
+			if (activeHandle === 'furnace') {
+				// Furnace temperature cannot exceed maxTempC - MIN_OFFSET
+				temp = Math.max(state.minTempC, Math.min(state.maxTempC - MIN_OFFSET, temp));
+				if (state.furnaceSetTemp !== temp) {
+					state.furnaceSetTemp = temp;
+					changed = true;
+				}
+				const targetEngineTemp = Math.max(initialEngineSetTemp, state.furnaceSetTemp + MIN_OFFSET);
+				if (state.engineSetTemp !== targetEngineTemp) {
+					state.engineSetTemp = targetEngineTemp;
+					changed = true;
+				}
+			} else if (activeHandle === 'engine') {
+				// Engine temperature must be between furnaceSetTemp + MIN_OFFSET and maxTempC
+				temp = Math.max(state.furnaceSetTemp + MIN_OFFSET, Math.min(state.maxTempC, temp));
+				if (state.engineSetTemp !== temp) {
+					state.engineSetTemp = temp;
+					changed = true;
+				}
+			}
+
+			if (changed) {
+				if (navigator.vibrate) {
+					try {
+						navigator.vibrate(10); // Crisp subtle haptic click
+					} catch (err) {
+						// Ignore vibration errors if blocked by browser policies
+					}
+				}
+				updateUI();
 			}
 		}
-		function json_refresh() {
-			var xmlhttp = new XMLHttpRequest();
-			var url="var_dump";
-			xmlhttp.onreadystatechange = handle_var_dump;
-			xmlhttp.open("GET", url, true);
-			xmlhttp.send();
+
+		function handlePointerUp(e) {
+			if (!activeHandle) return;
+			if (el.thermostatSvg) el.thermostatSvg.releasePointerCapture(e.pointerId);
+
+			if (el.tempCircleContent) {
+				el.tempCircleContent.classList.remove('adjusting-furnace', 'adjusting-engine');
+			}
+
+			lastDragEndTime = Date.now();
+			activeHandle = null;
+
+			(async () => {
+				try {
+					if (state.furnaceSetTemp !== initialFurnaceSetTemp) {
+						await post('/climate/Furnace%20Thermostat/set', { target_temperature: state.furnaceSetTemp });
+					}
+					if (state.engineSetTemp !== initialEngineSetTemp) {
+						await post('/climate/Engine%20Heat%20Thermostat/set', { target_temperature: state.engineSetTemp });
+					}
+				} catch (err) {
+					console.error("Error updating setpoints:", err);
+				}
+			})();
 		}
 
-		var refresh_interval_id;
-		function start_autorefresh() {
-			refresh_interval_id = setInterval(json_refresh, 2000);
-		}
-		function stop_autorefresh() {
-			clearInterval(refresh_interval_id);
+		// ==========================================
+		// 7. REAL-TIME UI RENDERING PASS
+		// ==========================================
+		function updateUI() {
+			const curTempNum = parseFloat(state.curTempC);
+			if (el.curTemp) el.curTemp.innerText = isNaN(curTempNum) ? "?" : formatTemp(curTempNum, 0);
+			if (el.curTempUnit) el.curTempUnit.innerText = useFahrenheit ? "F" : "C";
+
+			if (state.furnaceSetTemp != null && state.engineSetTemp != null && state.minTempC != null && state.maxTempC != null) {
+				const angleF = tempToAngle(state.furnaceSetTemp);
+				const angleE = tempToAngle(state.engineSetTemp);
+
+				if (el.furnaceArc) {
+					el.furnaceArc.setAttribute('d', describeArc(CENTER_X, CENTER_Y, DIAL_RADIUS, START_ANGLE, angleF));
+					el.furnaceArc.style.opacity = "1";
+				}
+				if (el.engineArc) {
+					el.engineArc.setAttribute('d', describeArc(CENTER_X, CENTER_Y, DIAL_RADIUS, angleF, angleE));
+					el.engineArc.style.opacity = "1";
+				}
+
+				const posF = polarToCartesian(CENTER_X, CENTER_Y, DIAL_RADIUS, angleF);
+				const posE = polarToCartesian(CENTER_X, CENTER_Y, DIAL_RADIUS, angleE);
+
+				if (el.furnaceHandle) {
+					el.furnaceHandle.setAttribute('cx', posF.x);
+					el.furnaceHandle.setAttribute('cy', posF.y);
+					el.furnaceHandle.style.opacity = "1";
+				}
+				if (el.engineHandle) {
+					el.engineHandle.setAttribute('cx', posE.x);
+					el.engineHandle.setAttribute('cy', posE.y);
+					el.engineHandle.style.opacity = "1";
+				}
+			}
+
+			if (el.valFurnace) el.valFurnace.innerText = formatTemp(state.furnaceSetTemp, useFahrenheit ? 0 : 1);
+			if (el.valEngine) el.valEngine.innerText = formatTemp(state.engineSetTemp, useFahrenheit ? 0 : 1);
+
+			// Device active states visual treatments
+			const isHeatingActive = state.furnaceActive;
+			const isResidualHeatingActive = !state.furnaceActive && state.fanActive && state.residualActive;
+
+			if (el.statusFire) el.statusFire.classList.toggle('active-fire', isHeatingActive);
+			if (el.statusRadiator) el.statusRadiator.classList.toggle('active-radiator', state.residualActive);
+			if (el.statusFan) el.statusFan.classList.toggle('active-fan', state.fanActive);
+
+			if (el.furnaceArc) el.furnaceArc.classList.toggle('furnace-glow', isHeatingActive);
+			if (el.engineArc) el.engineArc.classList.toggle('engine-glow', isResidualHeatingActive);
+
+			if (el.tempRingOuter) {
+				el.tempRingOuter.classList.toggle('heating', isHeatingActive);
+				el.tempRingOuter.classList.toggle('residual-heating', isResidualHeatingActive);
+			}
+			if (el.curTemp) {
+				el.curTemp.classList.toggle('heating-pulse', isHeatingActive);
+				el.curTemp.classList.toggle('residual-heating-pulse', isResidualHeatingActive);
+			}
+
+			// System Mode controller buttons
+			const currentMode = getSystemMode();
+			if (el.btnOff) el.btnOff.classList.toggle('selected', currentMode === 'Off');
+			if (el.btnEngine) el.btnEngine.classList.toggle('selected', currentMode === 'Engine');
+			if (el.btnAuto) el.btnAuto.classList.toggle('selected', currentMode === 'Auto');
+
+			// Fan Selector buttons
+			if (el.btnFanOn) el.btnFanOn.classList.toggle('selected', state.fanMode === 'On');
+			if (el.btnFanAuto) el.btnFanAuto.classList.toggle('selected', state.fanMode !== 'On');
+
+			// Disconnection / Offline Lockout Feedback
+			const isConnected = el.connDot && el.connDot.classList.contains('connected');
+			const lockout = !isConnected;
+			if (el.thermostatSvg) el.thermostatSvg.classList.toggle('offline-lockout', lockout);
+			if (el.segmentedControls) {
+				el.segmentedControls.forEach(ctrl => {
+					ctrl.classList.toggle('offline-lockout', lockout);
+				});
+			}
 		}
 
-		json_refresh();
-		start_autorefresh();
+		// ==========================================
+		// 8. API CONTROL OPERATIONS
+		// ==========================================
+		const setSystemMode = async (mode) => {
+			const isAuto = mode === 'Auto';
+			const isEngine = mode === 'Engine';
 
+			state.furnaceMode = isAuto ? 'HEAT' : 'OFF';
+			state.engineMode = (isAuto || isEngine) ? 'HEAT' : 'OFF';
+			updateUI();
+
+			if (navigator.vibrate) {
+				try {
+					navigator.vibrate(15); // Tactical button tap vibration
+				} catch (err) {
+					// Silent fallback if haptics are unsupported or blocked
+				}
+			}
+
+			try {
+				await post('/climate/Furnace%20Thermostat/set', { mode: state.furnaceMode.toLowerCase() });
+				await post('/climate/Engine%20Heat%20Thermostat/set', { mode: state.engineMode.toLowerCase() });
+			} catch (err) {
+				console.error("Error setting system mode:", err);
+			}
+		};
+
+		const setFanMode = (mode) => {
+			state.fanMode = mode;
+			updateUI();
+
+			if (navigator.vibrate) {
+				try {
+					navigator.vibrate(15); // Tactical button tap vibration
+				} catch (err) {
+					// Silent fallback if haptics are unsupported or blocked
+				}
+			}
+
+			post('/select/Fan%20Mode/set', { option: mode });
+		};
+
+		// ==========================================
+		// 9. EVENT STREAM (SSE) CLIENT
+		// ==========================================
+		let lastDragEndTime = 0;
+		let sseSource = null;
+
+		const startSSE = () => {
+			if (sseSource) {
+				try {
+					sseSource.close();
+				} catch (err) {
+					console.error("Error closing previous EventSource connection:", err);
+				}
+			}
+
+			const source = new EventSource(basePath + '/events');
+			sseSource = source;
+
+			source.onopen = () => {
+				if (el.connDot) el.connDot.classList.add('connected');
+				if (el.connText) el.connText.innerText = "Connected";
+				updateUI();
+			};
+
+			source.onerror = () => {
+				if (el.connDot) el.connDot.classList.remove('connected');
+				if (el.connText) el.connText.innerText = "Disconnected";
+				updateUI();
+			};
+
+			source.addEventListener('state', (e) => {
+				try {
+					const data = JSON.parse(e.data);
+					let stateChanged = false;
+
+					// ESPHome is migrating the semantics around id.
+					// name_id is available as a migration step to the final state.
+					// Use data.name_id instead of id if available.
+					// This can be removed after ESPHome 2026.08.0
+					if (data.name_id) data.id = data.name_id;
+
+					const allowTargetTempUpdates = (activeHandle === null) && (Date.now() - lastDragEndTime > 1500);
+
+					switch (data.id) {
+						case 'sensor/Cabin Temperature': {
+							const val = parseFloat(data.value);
+							if (state.curTempC !== val) {
+								state.curTempC = val;
+								stateChanged = true;
+							}
+							break;
+						}
+						case 'climate/Furnace Thermostat': {
+							if (state.furnaceMode !== data.mode) {
+								state.furnaceMode = data.mode;
+								stateChanged = true;
+							}
+							if (allowTargetTempUpdates && data.target_temperature != null) {
+								const targetF = parseFloat(data.target_temperature);
+								if (state.furnaceSetTemp !== targetF) {
+									state.furnaceSetTemp = targetF;
+									stateChanged = true;
+								}
+							}
+							if (data.current_temperature != null) {
+								const curF = parseFloat(data.current_temperature);
+								if (state.curTempC !== curF) {
+									state.curTempC = curF;
+									stateChanged = true;
+								}
+							}
+							const minF = parseFloat(data.min_temp ?? data.min_temperature);
+							if (!isNaN(minF) && state.minTempC !== minF) {
+								state.minTempC = minF;
+								stateChanged = true;
+							}
+							const maxF = parseFloat(data.max_temp ?? data.max_temperature);
+							if (!isNaN(maxF) && state.maxTempC !== maxF) {
+								state.maxTempC = maxF;
+								stateChanged = true;
+							}
+							break;
+						}
+						case 'climate/Engine Heat Thermostat': {
+							if (state.engineMode !== data.mode) {
+								state.engineMode = data.mode;
+								stateChanged = true;
+							}
+							if (allowTargetTempUpdates && data.target_temperature != null) {
+								const targetE = parseFloat(data.target_temperature);
+								if (state.engineSetTemp !== targetE) {
+									state.engineSetTemp = targetE;
+									stateChanged = true;
+								}
+							}
+							const minE = parseFloat(data.min_temp ?? data.min_temperature);
+							if (!isNaN(minE) && state.minTempC !== minE) {
+								state.minTempC = minE;
+								stateChanged = true;
+							}
+							const maxE = parseFloat(data.max_temp ?? data.max_temperature);
+							if (!isNaN(maxE) && state.maxTempC !== maxE) {
+								state.maxTempC = maxE;
+								stateChanged = true;
+							}
+							break;
+						}
+						case 'select/Fan Mode':
+							if (state.fanMode !== data.value) {
+								state.fanMode = data.value;
+								stateChanged = true;
+							}
+							break;
+						case 'switch/Furnace Relay': {
+							const active = data.state === 'ON';
+							if (state.furnaceActive !== active) {
+								state.furnaceActive = active;
+								stateChanged = true;
+							}
+							break;
+						}
+						case 'switch/Has Residual Heat': {
+							const active = data.state === 'ON';
+							if (state.residualActive !== active) {
+								state.residualActive = active;
+								stateChanged = true;
+							}
+							break;
+						}
+						case 'switch/Fan Relay': {
+							const active = data.state === 'ON';
+							if (state.fanActive !== active) {
+								state.fanActive = active;
+								stateChanged = true;
+							}
+							break;
+						}
+					}
+
+					if (stateChanged) updateUI();
+				} catch (err) {
+					console.error("Error parsing state event data:", err);
+				}
+			});
+		};
+
+		// ==========================================
+		// 10. BOOTSTRAP EXECUTOR
+		// ==========================================
+		if (el.track) {
+			el.track.setAttribute('d', describeArc(CENTER_X, CENTER_Y, DIAL_RADIUS, START_ANGLE, END_ANGLE));
+		}
+
+		if (el.thermostatSvg) {
+			el.thermostatSvg.addEventListener('pointerdown', handlePointerDown);
+			el.thermostatSvg.addEventListener('pointermove', handlePointerMove);
+			el.thermostatSvg.addEventListener('pointerup', handlePointerUp);
+			el.thermostatSvg.addEventListener('pointercancel', handlePointerUp);
+		}
+
+		if (el.btnOff) el.btnOff.addEventListener('click', () => setSystemMode('Off'));
+		if (el.btnEngine) el.btnEngine.addEventListener('click', () => setSystemMode('Engine'));
+		if (el.btnAuto) el.btnAuto.addEventListener('click', () => setSystemMode('Auto'));
+		if (el.btnFanAuto) el.btnFanAuto.addEventListener('click', () => setFanMode('Auto'));
+		if (el.btnFanOn) el.btnFanOn.addEventListener('click', () => setFanMode('On'));
+
+		// Reconnect to EventSource and refresh states when tab becomes visible (handles sleep/wake cycles)
+		document.addEventListener('visibilitychange', () => {
+			if (document.visibilityState === 'visible') {
+				startSSE();
+			} else {
+				// Close connection when tab is hidden to save client battery and free up socket connections on the ESP32
+				if (sseSource) {
+					try {
+						sseSource.close();
+						sseSource = null;
+					} catch (err) {
+						console.error("Error closing EventSource:", err);
+					}
+					if (el.connDot) el.connDot.classList.remove('connected');
+					if (el.connText) el.connText.innerText = "Disconnected";
+					updateUI();
+				}
+			}
+		});
+
+		// Establish SSE stream at startup only if the tab is active/visible
+		if (document.visibilityState === 'visible') {
+			startSSE();
+		}
 	</script>
 </body>
+
 </html>

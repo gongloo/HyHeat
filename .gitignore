@@ -1,11 +1,5 @@
+.cache
+.esphome
 .pio
 .vscode
-.cache
-.clangd
-compile_commands.json
-src/config.h
-coverage
-lcov.info
-lcov_raw.info
-.version_no_increment
-platformio_upload.ini
+secrets.yaml

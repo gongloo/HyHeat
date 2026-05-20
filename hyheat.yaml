@@ -1,0 +1,574 @@
+substitutions:
+  name: "HyHeat"
+  # Hardware Pins
+  main_temp_pin: GPIO18
+  heater_temp_pin: GPIO34
+  furnace_relay_pin: GPIO16
+  fan_relay_pin: GPIO17
+  led_pin: GPIO23
+  temp_power_pin: GPIO21
+
+  # Calibration and Logic Settings
+  main_temp_offset: "3.0"
+  min_residual_heat_hysteresis: "0.5"
+  furnace_hysteresis: "1.5"
+  engine_hysteresis: "1.0"
+  min_temp: "5.0"
+  max_temp: "38.0"
+
+esphome:
+  name: "${name | lower}"
+  comment: "Hydronic heating controller for RVs"
+  on_boot:
+    - priority: 800.0
+      then:
+        - switch.turn_on: temp_power
+    - priority: 600.0
+      then:
+        - lambda: |-
+            if (!id(influxdb_host_text).state.empty()) {
+              id(influxdb_udp)->set_addresses({id(influxdb_host_text).state.c_str()});
+            }
+            if (id(influxdb_port_number).state > 0) {
+              id(influxdb_udp)->set_broadcast_port(id(influxdb_port_number).state);
+            }
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+wifi:
+  ap:
+    ssid: "${name} Fallback"
+captive_portal:
+
+udp:
+  - id: influxdb_udp
+
+web_server:
+  version: 3
+  local: true
+  include_internal: true
+  sorting_groups:
+    - id: "environment"
+      name: "Environment"
+      sorting_weight: 10
+    - id: "controls"
+      name: "Controls"
+      sorting_weight: 15
+    - id: "settings"
+      name: "Settings"
+      sorting_weight: 20
+    - id: "udp_settings"
+      name: "UDP Configuration (Restart Required)"
+      sorting_weight: 60
+    - id: "debug"
+      name: "Debug"
+      sorting_weight: 100
+    - id: "host"
+      name: "Host"
+      sorting_weight: 110
+
+api:
+  reboot_timeout: 0s
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+logger:
+  level: DEBUG
+
+status_led:
+  pin: ${led_pin}
+
+text:
+  - platform: template
+    mode: text
+    name: "InfluxDB IP"
+    id: influxdb_host_text
+    icon: "mdi:table-network"
+    optimistic: true
+    min_length: 7
+    max_length: 15
+    restore_value: true
+    entity_category: "config"
+    web_server:
+      sorting_group_id: "udp_settings"
+
+# Sensor configuration
+sensor:
+  # Cabin Temperature Sensor (DHT22 on main_temp_pin)
+  - platform: dht
+    pin: ${main_temp_pin}
+    model: DHT22
+    temperature:
+      name: "Cabin Temperature"
+      id: main_temp
+      web_server:
+        sorting_group_id: "environment"
+      filters:
+        # Main sensor temperature offset
+        - offset: ${main_temp_offset}
+    humidity:
+      name: "Cabin Humidity"
+      id: main_humidity
+      web_server:
+        sorting_group_id: "environment"
+    update_interval: 10s
+
+  # Raw voltage measurement for the NTC thermistor on heater_temp_pin
+  - platform: adc
+    pin: ${heater_temp_pin}
+    name: "Heater ADC"
+    id: heater_adc
+    attenuation: 12db
+    update_interval: 10s
+    internal: true
+    web_server:
+      sorting_group_id: "debug"
+
+  # Computes the resistance of the NTC thermistor (Upstream configuration, 2.2k ohm series resistor)
+  - platform: resistance
+    sensor: heater_adc
+    name: "Heater Resistance"
+    configuration: UPSTREAM
+    resistor: 2200 Ohm
+    reference_voltage: 3.3V
+    id: heater_resistance
+    internal: true
+    web_server:
+      sorting_group_id: "debug"
+
+  # Resolves the Steinhart-Hart equation using the custom calibrated coefficients via native filter
+  - platform: template
+    name: "Heater Loop Temperature"
+    id: heater_temp
+    unit_of_measurement: "°C"
+    web_server:
+      sorting_group_id: "environment"
+    lambda: |-
+      return id(heater_resistance).state;
+    filters:
+      # Native ESPHome Steinhart-Hart converter
+      - to_ntc_temperature:
+          calibration:
+            a: 0.000852729
+            b: 0.000257773
+            c: 1.6183975e-7
+    # Triggers that dynamically enable/disable the Engine Heat Thermostat based on coolant temperature
+    on_value:
+      - then:
+          - if:
+              condition:
+                lambda: "return id(heater_temp).state > (id(min_residual_heat_number).state + ${min_residual_heat_hysteresis});"
+              then:
+                - switch.turn_on: has_residual_heat
+              else:
+                - if:
+                    condition:
+                      lambda: "return id(heater_temp).state < (id(min_residual_heat_number).state - ${min_residual_heat_hysteresis});"
+                    then:
+                      - switch.turn_off: has_residual_heat
+
+  # Uptime sensor for diagnostics
+  - platform: uptime
+    name: "Uptime"
+    id: uptime_sensor
+    update_interval: 10s
+    web_server:
+      sorting_group_id: "host"
+
+  - platform: duty_time
+    id: fan_on_s
+    name: "Fan On Seconds"
+    icon: "mdi:fan"
+    internal: true
+    web_server:
+      sorting_group_id: "debug"
+    lambda: "return id(fan_relay).state;"
+    accuracy_decimals: 0
+    update_interval: 10s
+
+  - platform: duty_time
+    id: furnace_on_s
+    name: "Furnace On Seconds"
+    icon: "mdi:fire"
+    internal: true
+    web_server:
+      sorting_group_id: "debug"
+    lambda: "return id(furnace_relay).state;"
+    accuracy_decimals: 0
+    update_interval: 10s
+
+# Switches (Physical Relays and Dummy Demands)
+switch:
+  # Physical Relay for the Furnace
+  - platform: gpio
+    pin: ${furnace_relay_pin}
+    id: furnace_relay
+    name: "Furnace Relay"
+    restore_mode: ALWAYS_OFF
+    internal: true
+    web_server:
+      sorting_group_id: "debug"
+    on_turn_on:
+      - sensor.duty_time.reset: furnace_on_s
+    on_turn_off:
+      - sensor.duty_time.reset: furnace_on_s
+
+  # Physical Relay for the Fan
+  - platform: gpio
+    pin: ${fan_relay_pin}
+    id: fan_relay
+    name: "Fan Relay"
+    restore_mode: ALWAYS_OFF
+    internal: true
+    web_server:
+      sorting_group_id: "debug"
+    on_turn_on:
+      - sensor.duty_time.reset: fan_on_s
+    on_turn_off:
+      - sensor.duty_time.reset: fan_on_s
+
+  # Sensor Power (GPIO Pin supplying power to the temperature sensors)
+  - platform: gpio
+    pin: ${temp_power_pin}
+    id: temp_power
+    name: "Sensor Power"
+    restore_mode: ALWAYS_ON
+    internal: true
+    web_server:
+      sorting_group_id: "debug"
+
+  # Fan Override - Force Fan ON manually
+  - platform: template
+    id: fan_override
+    name: "Fan Override"
+    internal: true
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - switch.turn_on: fan_relay
+    on_turn_off:
+      - if:
+          condition:
+            lambda: "return !id(furnace_fan_demand).state && !id(engine_fan_demand).state;"
+          then:
+            - switch.turn_off: fan_relay
+    web_server:
+      sorting_group_id: "debug"
+
+  # Dummy Switch for Furnace Fan demand
+  - platform: template
+    id: furnace_fan_demand
+    name: "Furnace Fan Demand"
+    internal: true
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+    web_server:
+      sorting_group_id: "debug"
+    on_turn_on:
+      - switch.turn_on: fan_relay
+    on_turn_off:
+      - if:
+          condition:
+            lambda: "return !id(engine_fan_demand).state && !id(fan_override).state;"
+          then:
+            - switch.turn_off: fan_relay
+
+  # Dummy Switch for Engine Fan demand
+  - platform: template
+    id: engine_fan_demand
+    name: "Engine Fan Demand"
+    internal: true
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+    web_server:
+      sorting_group_id: "debug"
+    on_turn_on:
+      - switch.turn_on: fan_relay
+    on_turn_off:
+      - if:
+          condition:
+            lambda: "return !id(furnace_fan_demand).state && !id(fan_override).state;"
+          then:
+            - switch.turn_off: fan_relay
+
+  # Dummy Switch for representing residual heat presence
+  - platform: template
+    id: has_residual_heat
+    name: "Has Residual Heat"
+    internal: true
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - if:
+          condition:
+            lambda: "return id(engine_thermostat).action == climate::CLIMATE_ACTION_HEATING;"
+          then:
+            - switch.turn_on: engine_fan_demand
+    on_turn_off:
+      - switch.turn_off: engine_fan_demand
+    web_server:
+      sorting_group_id: "debug"
+
+# Climate (Thermostat Controllers)
+climate:
+  # 1. Furnace Thermostat: Activates physical furnace and fan
+  - platform: thermostat
+    name: "Furnace Thermostat"
+    id: furnace_thermostat
+    web_server:
+      sorting_group_id: "controls"
+    sensor: main_temp
+    min_heating_run_time: 15min
+    min_idle_time: 30s
+    min_heating_off_time: 30s
+    min_fanning_run_time: 30s
+    min_fanning_off_time: 30s
+    heat_deadband: ${furnace_hysteresis}
+    heat_overrun: ${furnace_hysteresis}
+    default_preset: "Home"
+    preset:
+      - name: "Home"
+        default_target_temperature_low: 19.0C
+    visual:
+      min_temperature: ${min_temp}
+      max_temperature: ${max_temp}
+      temperature_step: 0.5
+    heat_action:
+      - switch.turn_on: furnace_relay
+      - switch.turn_on: furnace_fan_demand
+    idle_action:
+      - switch.turn_off: furnace_relay
+      - switch.turn_off: furnace_fan_demand
+    fan_only_action:
+      - switch.turn_on: furnace_fan_demand
+    on_control:
+      then:
+        - lambda: |-
+            if (id(furnace_thermostat).mode == climate::CLIMATE_MODE_HEAT) {
+              if (id(engine_thermostat).mode != climate::CLIMATE_MODE_HEAT) {
+                auto call = id(engine_thermostat).make_call();
+                call.set_mode(climate::CLIMATE_MODE_HEAT);
+                call.perform();
+              }
+            }
+
+  # 2. Engine Heat Thermostat: Leverages "free" engine loop heat, allowing cabin overshoot
+  - platform: thermostat
+    name: "Engine Heat Thermostat"
+    id: engine_thermostat
+    web_server:
+      sorting_group_id: "controls"
+    sensor: main_temp
+    min_heating_run_time: 10s
+    min_idle_time: 10s
+    min_heating_off_time: 10s
+    heat_deadband: ${engine_hysteresis}
+    heat_overrun: ${engine_hysteresis}
+    default_preset: "Home"
+    preset:
+      - name: "Home"
+        default_target_temperature_low: 24.0C
+    visual:
+      min_temperature: ${min_temp}
+      max_temperature: ${max_temp}
+      temperature_step: 0.5
+    heat_action:
+      - if:
+          condition:
+            lambda: "return id(has_residual_heat).state;"
+          then:
+            - switch.turn_on: engine_fan_demand
+          else:
+            - switch.turn_off: engine_fan_demand
+    idle_action:
+      - switch.turn_off: engine_fan_demand
+    on_control:
+      then:
+        - lambda: |-
+            if (id(engine_thermostat).mode == climate::CLIMATE_MODE_OFF) {
+              if (id(furnace_thermostat).mode != climate::CLIMATE_MODE_OFF) {
+                auto call = id(furnace_thermostat).make_call();
+                call.set_mode(climate::CLIMATE_MODE_OFF);
+                call.perform();
+              }
+            }
+
+# Sensor Reset Scripts, Buttons, and Automated Health Check
+script:
+  - id: report_stats
+    then:
+      - udp.write:
+          id: influxdb_udp
+          data: !lambda |-
+            std::string rpt;
+            rpt.reserve(1024);
+            char buf[32];
+
+            auto add_val = [&](const char* name, float val) {
+              if (std::isnan(val)) return;
+              rpt += ",";
+              rpt += name;
+              rpt += "=";
+              int n = snprintf(buf, sizeof(buf), "%.4g", val);
+              if (n > 0 && n < (int)sizeof(buf)) rpt.append(buf, n);
+            };
+
+            auto add_int = [&](const char* name, float val) {
+              if (std::isnan(val)) return;
+              rpt += ",";
+              rpt += name;
+              rpt += "=";
+              int n = snprintf(buf, sizeof(buf), "%ui", (uint32_t)val);
+              if (n > 0 && n < (int)sizeof(buf)) rpt.append(buf, n);
+            };
+
+            rpt = "hyheat,host=${name} furnace_relay=";
+            rpt += (id(furnace_relay).state ? 'T' : 'F');
+            rpt += ",fan_relay=";
+            rpt += (id(fan_relay).state ? 'T' : 'F');
+            rpt += ",fan_override=";
+            rpt += (id(fan_override).state ? 'T' : 'F');
+            rpt += ",has_residual_heat=";
+            rpt += (id(has_residual_heat).state ? 'T' : 'F');
+            rpt += ",engine_thermostat_on=";
+            rpt += (id(engine_thermostat).mode != climate::CLIMATE_MODE_OFF ? 'T' : 'F');
+            rpt += ",furnace_thermostat_on=";
+            rpt += (id(furnace_thermostat).mode != climate::CLIMATE_MODE_OFF ? 'T' : 'F');
+
+            add_int("uptime", id(uptime_sensor).state);
+            add_int("fan_on_s", id(fan_on_s).state);
+            add_int("furnace_on_s", id(furnace_on_s).state);
+            add_val("cabin_temp", id(main_temp).state);
+            add_val("cabin_humidity", id(main_humidity).state);
+            add_val("heater_loop_temp", id(heater_temp).state);
+            add_val("furnace_target_temp", id(furnace_thermostat).target_temperature);
+            add_val("engine_target_temp", id(engine_thermostat).target_temperature);
+            add_val("min_residual_heat", id(min_residual_heat_number).state);
+
+            if (rpt.length() > 1400) {
+              ESP_LOGE("report_stats", "Telemetry string too long (%d bytes), potential truncation!", rpt.length());
+            }
+
+            ESP_LOGD("report_stats", "UDP: %s", rpt.c_str());
+            return std::vector<uint8_t>(rpt.begin(), rpt.end());
+
+button:
+  - platform: template
+    name: "Reset Sensors"
+    id: reset_sensors_button
+    icon: "mdi:restart"
+    web_server:
+      sorting_group_id: "debug"
+    on_press:
+      - logger.log: "Resetting temperature sensors..."
+      - switch.turn_off: temp_power
+      - delay: 5s
+      - switch.turn_on: temp_power
+      - logger.log: "Sensors reset complete."
+
+  - platform: restart
+    name: "Restart"
+    id: restart_button
+    entity_category: "diagnostic"
+    web_server:
+      sorting_group_id: "host"
+
+interval:
+  - interval: 10s
+    then:
+      - lambda: |-
+          static int consecutive_failed_reads = 0;
+          if (std::isnan(id(main_temp).state) || std::isnan(id(heater_temp).state)) {
+            consecutive_failed_reads++;
+            ESP_LOGW("sensor", "Temperature readings contain NaN! Consecutive failures: %d", consecutive_failed_reads);
+            if (consecutive_failed_reads >= 10) {
+              ESP_LOGE("sensor", "Too many failed readings, resetting sensor power...");
+              consecutive_failed_reads = 0;
+              id(reset_sensors_button).press();
+            }
+          } else {
+            consecutive_failed_reads = 0;
+          }
+      - script.execute: report_stats
+
+# Custom PWA Web Interface Hosting
+html_host:
+  - id: ui_page
+    html_file: "data/htdocs/thermostat.html"
+    url: "/thermostat"
+  - id: ui_manifest
+    html_file: "data/htdocs/manifest.webmanifest"
+    url: "/manifest.webmanifest"
+  - id: ui_sw
+    html_file: "data/htdocs/sw.js"
+    url: "/sw.js"
+  - id: ui_icon
+    html_file: "data/htdocs/apple-touch-icon.png"
+    url: "/apple-touch-icon.png"
+  - id: ui_icon_64
+    html_file: "data/htdocs/icon-64.png"
+    url: "/icon-64.png"
+  - id: ui_favicon
+    html_file: "data/htdocs/favicon.ico"
+    url: "/favicon.ico"
+
+select:
+  - platform: template
+    name: "Fan Mode"
+    id: fan_mode
+    web_server:
+      sorting_group_id: "controls"
+    options:
+      - "Auto"
+      - "On"
+    optimistic: true
+    restore_value: true
+    initial_option: "Auto"
+    on_value:
+      then:
+        - lambda: |-
+            if (x == "On") {
+              id(fan_override).turn_on();
+            } else {
+              id(fan_override).turn_off();
+            }
+
+number:
+  - platform: template
+    name: "Min Residual Heat"
+    id: min_residual_heat_number
+    icon: "mdi:thermometer-chevron-up"
+    optimistic: true
+    min_value: 0
+    max_value: 100
+    step: 0.5
+    initial_value: 55.0
+    restore_value: true
+    web_server:
+      sorting_group_id: "settings"
+
+  - platform: template
+    name: "InfluxDB Port"
+    id: influxdb_port_number
+    icon: "mdi:numeric"
+    optimistic: true
+    min_value: 1
+    max_value: 65535
+    initial_value: 8089
+    step: 1
+    restore_value: true
+    entity_category: "config"
+    web_server:
+      sorting_group_id: "udp_settings"
