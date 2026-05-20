@@ -1,4 +1,4 @@
-# <img src="data/htdocs/icon-64.png" width="32" style="vertical-align: middle;"> HyHeat 
+# <img src="data/htdocs/icon-96.png" width="32" style="vertical-align: middle;"> HyHeat 
 
 **HyHeat** is a premium, state-of-the-art ESP32-based smart thermostat system designed specifically for campervans and RVs equipped with a hydronic furnace (e.g., Webasto, Eberspächer, or Aqua-Hot) plumbed in line with the engine's coolant loop. 
 
