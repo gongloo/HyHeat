@@ -19,6 +19,10 @@ substitutions:
 esphome:
   name: "${name | lower}"
   comment: "Hydronic heating controller for RVs"
+  project:
+    name: "gongloo.${name}"
+    version: "2.0.0"
+  min_version: 2026.4.5
   on_boot:
     - priority: 800.0
       then:

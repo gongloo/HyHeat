@@ -101,6 +101,15 @@ async def to_code(config):
     if content_type == "text/html":
         try:
             html_text = file_content.decode("utf-8")
+
+            # Replace ${version} placeholder with actual project version from configuration
+            version_str = "unknown"
+            if 'esphome' in CORE.config:
+                esphome_conf = CORE.config['esphome']
+                if 'project' in esphome_conf:
+                    version_str = esphome_conf['project'].get('version', 'unknown')
+            html_text = html_text.replace("${version}", version_str)
+
             import re
             pattern = r'(<svg\b[^>]*data-mdi="([^"]+)"[^>]*>)(.*?)(</svg>)'
             

@@ -134,6 +134,59 @@
 			font-size: var(--logo-size);
 			font-weight: 700;
 			letter-spacing: -0.03em;
+			transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+		}
+
+		.brand-container {
+			position: relative;
+			display: inline-flex;
+			flex-direction: column;
+			align-items: flex-start;
+			cursor: pointer;
+			user-select: none;
+		}
+
+		.brand-container:hover .logo {
+			opacity: 0.9;
+		}
+
+		.brand-container:active .logo {
+			transform: scale(0.98);
+		}
+
+		.version-wrapper {
+			position: absolute;
+			top: 100%;
+			left: 0;
+			display: grid;
+			grid-template-rows: 0fr;
+			transition: grid-template-rows 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+			opacity: 0;
+			pointer-events: none;
+			z-index: 10;
+			width: 150px;
+		}
+
+		.brand-container.show-version .version-wrapper {
+			grid-template-rows: 1fr;
+			opacity: 1;
+		}
+
+		.version-tag {
+			overflow: hidden;
+			font-size: 0.7rem;
+			font-weight: 500;
+			letter-spacing: 0.05em;
+			color: var(--text-secondary);
+			padding-top: 0.15rem;
+			padding-left: calc(var(--logo-size) + 0.5rem);
+			text-transform: uppercase;
+			transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+			transform: translateY(-5px);
+		}
+
+		.brand-container.show-version .version-tag {
+			transform: translateY(0);
 		}
 
 		.logo img {
@@ -615,10 +668,15 @@
 		<div class="container">
 			<!-- Header -->
 			<header>
-				<h1 class="logo">
-					<img src="icon-96.png" alt="HyHeat Logo" />
-					<span class="logo-text"><span class="brand-highlight">Hy</span>Heat</span>
-				</h1>
+				<div class="brand-container" id="brand_container">
+					<h1 class="logo">
+						<img src="icon-96.png" alt="HyHeat Logo" />
+						<span class="logo-text"><span class="brand-highlight">Hy</span>Heat</span>
+					</h1>
+					<div class="version-wrapper">
+						<div class="version-tag">v${version}</div>
+					</div>
+				</div>
 				<div class="connection-badge">
 					<div id="conn_dot"></div>
 					<span id="conn_text">Connecting</span>
@@ -1282,6 +1340,18 @@
 		// ==========================================
 		// 10. BOOTSTRAP EXECUTOR
 		// ==========================================
+		const brandContainer = document.getElementById('brand_container');
+		if (brandContainer) {
+			brandContainer.addEventListener('click', () => {
+				brandContainer.classList.toggle('show-version');
+				if (navigator.vibrate) {
+					try {
+						navigator.vibrate(10);
+					} catch (e) {}
+				}
+			});
+		}
+
 		if (el.track) {
 			el.track.setAttribute('d', describeArc(CENTER_X, CENTER_Y, DIAL_RADIUS, START_ANGLE, END_ANGLE));
 		}
