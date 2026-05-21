@@ -1,6 +1,7 @@
+.DS_Store
 .cache
 .esphome
 .pio
 .vscode
+__pycache__
 secrets.yaml
-.DS_Store
