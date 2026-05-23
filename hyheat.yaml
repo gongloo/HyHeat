@@ -48,6 +48,9 @@ esp32:
   board: esp32dev
   framework:
     type: esp-idf
+    advanced:
+      minimum_chip_revision: "3.0"
+      sram1_as_iram: true
 
 wifi:
   ap:
