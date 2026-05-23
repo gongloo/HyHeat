@@ -9,7 +9,6 @@ substitutions:
   temp_power_pin: GPIO21
 
   # Calibration and Logic Settings
-  main_temp_offset: "3.0"
   min_residual_heat_hysteresis: "0.5"
   furnace_hysteresis: "1.5"
   engine_hysteresis: "1.0"
@@ -21,7 +20,7 @@ esphome:
   comment: "Hydronic heating controller for RVs"
   project:
     name: "gongloo.${name}"
-    version: "2.0.1"
+    version: "2.1.0"
   min_version: 2026.4.5
   on_boot:
     - priority: 800.0
@@ -126,7 +125,7 @@ sensor:
         sorting_group_id: "environment"
       filters:
         # Main sensor temperature offset
-        - offset: ${main_temp_offset}
+        - lambda: "return x + id(main_temp_offset).state;"
     humidity:
       name: "Cabin Humidity"
       id: main_humidity
@@ -465,6 +464,7 @@ script:
             add_val("furnace_target_temp", id(furnace_thermostat).target_temperature);
             add_val("engine_target_temp", id(engine_thermostat).target_temperature);
             add_val("min_residual_heat", id(min_residual_heat_number).state);
+            add_val("cabin_temp_offset", id(main_temp_offset).state);
 
             if (rpt.length() > 1400) {
               ESP_LOGE("report_stats", "Telemetry string too long (%d bytes), potential truncation!", rpt.length());
@@ -555,6 +555,20 @@ select:
             }
 
 number:
+  - platform: template
+    name: "Cabin Temp Offset"
+    id: main_temp_offset
+    unit_of_measurement: "°C"
+    icon: "mdi:thermometer-lines"
+    optimistic: true
+    min_value: -10.0
+    max_value: 10.0
+    step: 0.5
+    initial_value: 0.0
+    restore_value: true
+    web_server:
+      sorting_group_id: "settings"
+
   - platform: template
     name: "Min Residual Heat"
     id: min_residual_heat_number
