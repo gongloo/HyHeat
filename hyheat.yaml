@@ -20,7 +20,7 @@ esphome:
   comment: "Hydronic heating controller for RVs"
   project:
     name: "gongloo.${name}"
-    version: "2.1.0"
+    version: "2.1.1"
   min_version: 2026.4.5
   on_boot:
     - priority: 800.0
@@ -572,6 +572,7 @@ number:
   - platform: template
     name: "Min Residual Heat"
     id: min_residual_heat_number
+    unit_of_measurement: "°C"
     icon: "mdi:thermometer-chevron-up"
     optimistic: true
     min_value: 0
