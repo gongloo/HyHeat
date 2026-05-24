@@ -15,15 +15,12 @@ substitutions:
   min_temp: "5.0"
   max_temp: "38.0"
 
-  # Path prefix for local repository files (default to current directory)
-  hyheat_src: "."
-
 esphome:
   name: "${name | lower}"
   comment: "Hydronic heating controller for RVs"
   project:
     name: "gongloo.${name}"
-    version: "2.1.2"
+    version: "2.1.3"
   min_version: 2026.4.5
   on_boot:
     - priority: 800.0
@@ -43,8 +40,8 @@ external_components:
   - source:
       type: git
       url: https://github.com/gongloo/esphome-web-host.git
-      ref: v1.0.0
-    components: [ web_host ]
+      ref: v2.1.0
+    components: [web_host]
 
 esp32:
   board: esp32dev
@@ -514,24 +511,25 @@ interval:
 
 # Custom PWA Web Interface Hosting
 web_host:
-  - id: ui_page
-    file: "${hyheat_src}/data/htdocs/thermostat.html"
-    url: "/thermostat"
-  - id: ui_manifest
-    file: "${hyheat_src}/data/htdocs/manifest.webmanifest"
-    url: "/manifest.webmanifest"
-  - id: ui_sw
-    file: "${hyheat_src}/data/htdocs/sw.js"
-    url: "/sw.js"
-  - id: ui_icon
-    file: "${hyheat_src}/data/htdocs/apple-touch-icon.png"
-    url: "/apple-touch-icon.png"
-  - id: ui_icon_96
-    file: "${hyheat_src}/data/htdocs/icon-96.png"
-    url: "/icon-96.png"
-  - id: ui_favicon
-    file: "${hyheat_src}/data/htdocs/favicon.ico"
-    url: "/favicon.ico"
+  files:
+    - id: ui_page
+      file: "data/htdocs/thermostat.html"
+      url: "/thermostat"
+    - id: ui_manifest
+      file: "data/htdocs/manifest.webmanifest"
+      url: "/manifest.webmanifest"
+    - id: ui_sw
+      file: "data/htdocs/sw.js"
+      url: "/sw.js"
+    - id: ui_icon
+      file: "data/htdocs/apple-touch-icon.png"
+      url: "/apple-touch-icon.png"
+    - id: ui_icon_96
+      file: "data/htdocs/icon-96.png"
+      url: "/icon-96.png"
+    - id: ui_favicon
+      file: "data/htdocs/favicon.ico"
+      url: "/favicon.ico"
 
 select:
   - platform: template
