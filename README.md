@@ -87,17 +87,13 @@ HyHeat is designed to be cleanly integrated directly into your central ESPHome c
 
 ### 2. ESPHome Package Integration (Recommended)
 
-To run HyHeat, create an extending YAML configuration file (e.g., `hyheat.yaml`) in your primary ESPHome directory. Include the base `hyheat.yaml` package, supply your keys/passwords via secrets, and override the `hyheat_src` substitution to point to your clone of this repository.
+To install HyHeat, create an extending YAML configuration file (e.g., `hyheat.yaml`). Include the base `hyheat.yaml` package, and supply your keys/passwords via secrets.
 
 #### Example Configuration (`ESPHome/config/hyheat.yaml`):
 
 ```yaml
-substitutions:
-  # Absolute or relative path to the cloned HyHeat repository
-  hyheat_src: "../../HyHeat"
-
 packages:
-  hyheat: !include ${hyheat_src}/hyheat.yaml
+  hyheat: github://gongloo/HyHeat/hyheat.yaml@2.1.3
 
 # Enable Home Assistant API with secrets
 api:
@@ -112,7 +108,21 @@ ota:
 
 ### 3. Compile and Flash
 
-Navigate to your ESPHome working directory and compile/flash your configuration:
+You can compile and flash your configuration using either the graphical ESPHome Web Dashboard or the command-line interface.
+
+#### Option A: ESPHome Web Dashboard (Graphical UI)
+
+If you run ESPHome as a Home Assistant Add-on or host a standalone ESPHome dashboard:
+
+1. Open the **ESPHome Dashboard** in your web browser.
+2. Click **New Device** (or click **Edit** on your device card), paste your custom extending YAML configuration, and click **Save**.
+3. Click **Install** on the device card:
+   - Select **Wirelessly** (for subsequent upgrades only) to update over-the-air (OTA).
+   - Select **Plug into this computer** (to flash directly from your web browser using WebUSB) or **Plug into the computer running ESPHome** (to flash via the host server's physical USB port).
+
+#### Option B: Command-Line Interface (CLI)
+
+If you prefer managing configurations in the terminal, navigate to your ESPHome working directory and execute:
 
 ```bash
 # Verify the configuration syntax is correct
