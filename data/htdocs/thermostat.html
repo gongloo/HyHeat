@@ -1226,12 +1226,6 @@
 					const data = JSON.parse(e.data);
 					let stateChanged = false;
 
-					// ESPHome is migrating the semantics around id.
-					// name_id is available as a migration step to the final state.
-					// Use data.name_id instead of id if available.
-					// This can be removed after ESPHome 2026.08.0
-					if (data.name_id) data.id = data.name_id;
-
 					const allowTargetTempUpdates = (activeHandle === null) && (Date.now() - lastDragEndTime > 1500);
 
 					switch (data.id) {

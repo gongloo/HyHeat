@@ -20,8 +20,8 @@ esphome:
   comment: "Hydronic heating controller for RVs"
   project:
     name: "gongloo.${name}"
-    version: "2.1.5"
-  min_version: 2026.7.4
+    version: "2.1.6"
+  min_version: 2026.8.0
   on_boot:
     - priority: 800.0
       then:
