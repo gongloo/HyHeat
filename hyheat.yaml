@@ -256,7 +256,17 @@ switch:
       sorting_group_id: "debug"
     on_turn_on:
       - sensor.duty_time.reset: furnace_on_s
+      - if:
+          condition:
+            lambda: "return !id(influxdb_host_text).state.empty();"
+          then:
+            - script.execute: report_stats
     on_turn_off:
+      - if:
+          condition:
+            lambda: "return !id(influxdb_host_text).state.empty();"
+          then:
+            - script.execute: report_stats
       - sensor.duty_time.reset: furnace_on_s
 
   # Physical Relay for the Fan
@@ -270,7 +280,17 @@ switch:
       sorting_group_id: "debug"
     on_turn_on:
       - sensor.duty_time.reset: fan_on_s
+      - if:
+          condition:
+            lambda: "return !id(influxdb_host_text).state.empty();"
+          then:
+            - script.execute: report_stats
     on_turn_off:
+      - if:
+          condition:
+            lambda: "return !id(influxdb_host_text).state.empty();"
+          then:
+            - script.execute: report_stats
       - sensor.duty_time.reset: fan_on_s
 
   # Sensor Power (GPIO Pin supplying power to the temperature sensors)
