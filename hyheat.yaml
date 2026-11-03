@@ -405,6 +405,14 @@ climate:
                 call.perform();
               }
             }
+            if (!std::isnan(x.target_temperature)) {
+              float min_engine_target = x.target_temperature + 1.0f;
+              if (id(engine_thermostat).target_temperature < min_engine_target) {
+                auto call = id(engine_thermostat).make_call();
+                call.set_target_temperature(std::min(min_engine_target, ${max_temp}f));
+                call.perform();
+              }
+            }
 
   # 2. Engine Heat Thermostat: Leverages "free" engine loop heat, allowing cabin overshoot
   - platform: thermostat
@@ -443,6 +451,14 @@ climate:
               if (id(furnace_thermostat).mode != climate::CLIMATE_MODE_OFF) {
                 auto call = id(furnace_thermostat).make_call();
                 call.set_mode(climate::CLIMATE_MODE_OFF);
+                call.perform();
+              }
+            }
+            if (!std::isnan(x.target_temperature)) {
+              float max_furnace_target = x.target_temperature - 1.0f;
+              if (id(furnace_thermostat).target_temperature > max_furnace_target) {
+                auto call = id(furnace_thermostat).make_call();
+                call.set_target_temperature(std::max(max_furnace_target, ${min_temp}f));
                 call.perform();
               }
             }
