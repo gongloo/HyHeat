@@ -177,13 +177,13 @@ sensor:
       - then:
           - if:
               condition:
-                lambda: "return id(heater_temp).state > (id(min_residual_heat_number).state + ${min_residual_heat_hysteresis});"
+                lambda: "return !std::isnan(x) && x > (id(min_residual_heat_number).state + ${min_residual_heat_hysteresis});"
               then:
                 - switch.turn_on: has_residual_heat
               else:
                 - if:
                     condition:
-                      lambda: "return id(heater_temp).state < (id(min_residual_heat_number).state - ${min_residual_heat_hysteresis});"
+                      lambda: "return std::isnan(x) || x < (id(min_residual_heat_number).state - ${min_residual_heat_hysteresis});"
                     then:
                       - switch.turn_off: has_residual_heat
 
@@ -503,9 +503,15 @@ interval:
             consecutive_failed_reads++;
             ESP_LOGW("sensor", "Temperature readings contain NaN! Consecutive failures: %d", consecutive_failed_reads);
             if (consecutive_failed_reads >= 10) {
-              ESP_LOGE("sensor", "Too many failed readings, resetting sensor power...");
-              consecutive_failed_reads = 0;
-              id(reset_sensors_button).press();
+              ESP_LOGE("sensor", "Sensor failure threshold reached (10 failures). Shutting down heat outputs for safety...");
+              id(furnace_relay).turn_off();
+              id(furnace_fan_demand).turn_off();
+              id(engine_fan_demand).turn_off();
+              id(has_residual_heat).turn_off();
+              if (consecutive_failed_reads == 10) {
+                ESP_LOGE("sensor", "Triggering sensor power reset...");
+                id(reset_sensors_button).press();
+              }
             }
           } else {
             consecutive_failed_reads = 0;
