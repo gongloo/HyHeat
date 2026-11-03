@@ -452,6 +452,18 @@ climate:
 
 # Sensor Reset Scripts, Buttons, and Automated Health Check
 script:
+  - id: reset_sensors
+    mode: restart
+    then:
+      - logger.log: "Resetting temperature sensors power..."
+      - switch.turn_off: temp_power
+      - delay: 5s
+      - switch.turn_on: temp_power
+      - delay: 2s
+      - component.update: main_temp_sensor
+      - component.update: heater_adc
+      - logger.log: "Sensors reset complete."
+
   - id: report_stats
     then:
       - if:
@@ -522,11 +534,7 @@ button:
     web_server:
       sorting_group_id: "debug"
     on_press:
-      - logger.log: "Resetting temperature sensors..."
-      - switch.turn_off: temp_power
-      - delay: 5s
-      - switch.turn_on: temp_power
-      - logger.log: "Sensors reset complete."
+      - script.execute: reset_sensors
 
   - platform: restart
     name: "Restart"
@@ -551,7 +559,7 @@ interval:
               id(has_residual_heat).turn_off();
               if (consecutive_failed_reads == 10) {
                 ESP_LOGE("sensor", "Triggering sensor power reset...");
-                id(reset_sensors_button).press();
+                id(reset_sensors).execute();
               }
             }
           } else {
