@@ -14,7 +14,7 @@ substitutions:
   engine_hysteresis: "1.0"
   min_temp: "5.0"
   max_temp: "38.0"
-  max_coolant_temp: "90.0"
+  max_furnace_temp: "90.0"
 
 esphome:
   name: "${name | lower}"
@@ -196,20 +196,16 @@ sensor:
                       lambda: "return std::isnan(x) || x < (id(min_residual_heat_number).state - ${min_residual_heat_hysteresis});"
                     then:
                       - switch.turn_off: has_residual_heat
-          # High-limit coolant safety cutout: immediately kill furnace ignition if coolant exceeds max_coolant_temp
+          # High-limit coolant safety cutout: immediately kill furnace ignition if coolant exceeds max_furnace_temp
           - if:
               condition:
-                lambda: "return !std::isnan(x) && x >= ${max_coolant_temp};"
+                lambda: "return !std::isnan(x) && x >= ${max_furnace_temp} && id(furnace_relay).state;"
               then:
-                - if:
-                    condition:
-                      lambda: "return id(furnace_relay).state;"
-                    then:
-                      - logger.log:
-                          format: "Coolant temperature (%.1f°C) exceeded safety limit (${max_coolant_temp}°C)! Cutting furnace power."
-                          level: WARN
-                          args: ['x']
-                      - switch.turn_off: furnace_relay
+                - logger.log:
+                    format: "Coolant temperature (%.1f°C) exceeded safety limit (${max_furnace_temp}°C)! Cutting furnace power."
+                    level: WARN
+                    args: ['x']
+                - switch.turn_off: furnace_relay
 
   # Uptime sensor for diagnostics
   - platform: uptime
