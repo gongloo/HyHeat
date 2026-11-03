@@ -54,6 +54,7 @@ esp32:
       sram1_as_iram: true
 
 wifi:
+  reboot_timeout: 0s
   ap:
     ssid: "${name} Fallback"
 captive_portal:
