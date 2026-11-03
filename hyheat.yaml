@@ -27,7 +27,7 @@ esphome:
     - priority: 800.0
       then:
         - switch.turn_on: temp_power
-    - priority: 600.0
+    - priority: 250.0
       then:
         - lambda: |-
             if (!id(influxdb_host_text).state.empty()) {
@@ -106,7 +106,6 @@ text:
     id: influxdb_host_text
     icon: "mdi:table-network"
     optimistic: true
-    min_length: 7
     max_length: 15
     restore_value: true
     entity_category: "config"
@@ -545,7 +544,11 @@ interval:
           } else {
             consecutive_failed_reads = 0;
           }
-      - script.execute: report_stats
+      - if:
+          condition:
+            lambda: "return !id(influxdb_host_text).state.empty();"
+          then:
+            - script.execute: report_stats
 
 # Custom PWA Web Interface Hosting
 web_host:
