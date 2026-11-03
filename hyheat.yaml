@@ -256,17 +256,9 @@ switch:
       sorting_group_id: "debug"
     on_turn_on:
       - sensor.duty_time.reset: furnace_on_s
-      - if:
-          condition:
-            lambda: "return !id(influxdb_host_text).state.empty();"
-          then:
-            - script.execute: report_stats
+      - script.execute: report_stats
     on_turn_off:
-      - if:
-          condition:
-            lambda: "return !id(influxdb_host_text).state.empty();"
-          then:
-            - script.execute: report_stats
+      - script.execute: report_stats
       - sensor.duty_time.reset: furnace_on_s
 
   # Physical Relay for the Fan
@@ -280,17 +272,9 @@ switch:
       sorting_group_id: "debug"
     on_turn_on:
       - sensor.duty_time.reset: fan_on_s
-      - if:
-          condition:
-            lambda: "return !id(influxdb_host_text).state.empty();"
-          then:
-            - script.execute: report_stats
+      - script.execute: report_stats
     on_turn_off:
-      - if:
-          condition:
-            lambda: "return !id(influxdb_host_text).state.empty();"
-          then:
-            - script.execute: report_stats
+      - script.execute: report_stats
       - sensor.duty_time.reset: fan_on_s
 
   # Sensor Power (GPIO Pin supplying power to the temperature sensors)
@@ -470,61 +454,65 @@ climate:
 script:
   - id: report_stats
     then:
-      - udp.write:
-          id: influxdb_udp
-          data: !lambda |-
-            std::string rpt;
-            rpt.reserve(1024);
-            char buf[32];
+      - if:
+          condition:
+            lambda: "return !id(influxdb_host_text).state.empty();"
+          then:
+            - udp.write:
+                id: influxdb_udp
+                data: !lambda |-
+                  std::string rpt;
+                  rpt.reserve(1024);
+                  char buf[32];
 
-            auto add_val = [&](const char* name, float val) {
-              if (std::isnan(val)) return;
-              rpt += ",";
-              rpt += name;
-              rpt += "=";
-              int n = snprintf(buf, sizeof(buf), "%.4g", val);
-              if (n > 0 && n < (int)sizeof(buf)) rpt.append(buf, n);
-            };
+                  auto add_val = [&](const char* name, float val) {
+                    if (std::isnan(val)) return;
+                    rpt += ",";
+                    rpt += name;
+                    rpt += "=";
+                    int n = snprintf(buf, sizeof(buf), "%.4g", val);
+                    if (n > 0 && n < (int)sizeof(buf)) rpt.append(buf, n);
+                  };
 
-            auto add_int = [&](const char* name, float val) {
-              if (std::isnan(val)) return;
-              rpt += ",";
-              rpt += name;
-              rpt += "=";
-              int n = snprintf(buf, sizeof(buf), "%" PRIu32 "i", (uint32_t)val);
-              if (n > 0 && n < (int)sizeof(buf)) rpt.append(buf, n);
-            };
+                  auto add_int = [&](const char* name, float val) {
+                    if (std::isnan(val)) return;
+                    rpt += ",";
+                    rpt += name;
+                    rpt += "=";
+                    int n = snprintf(buf, sizeof(buf), "%" PRIu32 "i", (uint32_t)val);
+                    if (n > 0 && n < (int)sizeof(buf)) rpt.append(buf, n);
+                  };
 
-            rpt = "hyheat,host=${name | lower | replace(' ', '_') | replace(',', '_') | replace('=', '_')} furnace_relay=";
-            rpt += (id(furnace_relay).state ? 'T' : 'F');
-            rpt += ",fan_relay=";
-            rpt += (id(fan_relay).state ? 'T' : 'F');
-            rpt += ",fan_override=";
-            rpt += (id(fan_mode).state == "On" ? 'T' : 'F');
-            rpt += ",has_residual_heat=";
-            rpt += (id(has_residual_heat).state ? 'T' : 'F');
-            rpt += ",engine_thermostat_on=";
-            rpt += (id(engine_thermostat).mode != climate::CLIMATE_MODE_OFF ? 'T' : 'F');
-            rpt += ",furnace_thermostat_on=";
-            rpt += (id(furnace_thermostat).mode != climate::CLIMATE_MODE_OFF ? 'T' : 'F');
+                  rpt = "hyheat,host=${name | lower | replace(' ', '_') | replace(',', '_') | replace('=', '_')} furnace_relay=";
+                  rpt += (id(furnace_relay).state ? 'T' : 'F');
+                  rpt += ",fan_relay=";
+                  rpt += (id(fan_relay).state ? 'T' : 'F');
+                  rpt += ",fan_override=";
+                  rpt += (id(fan_mode).state == "On" ? 'T' : 'F');
+                  rpt += ",has_residual_heat=";
+                  rpt += (id(has_residual_heat).state ? 'T' : 'F');
+                  rpt += ",engine_thermostat_on=";
+                  rpt += (id(engine_thermostat).mode != climate::CLIMATE_MODE_OFF ? 'T' : 'F');
+                  rpt += ",furnace_thermostat_on=";
+                  rpt += (id(furnace_thermostat).mode != climate::CLIMATE_MODE_OFF ? 'T' : 'F');
 
-            add_int("uptime", id(uptime_sensor).state);
-            add_int("fan_on_s", id(fan_on_s).state);
-            add_int("furnace_on_s", id(furnace_on_s).state);
-            add_val("cabin_temp", id(main_temp).state);
-            add_val("cabin_humidity", id(main_humidity).state);
-            add_val("heater_loop_temp", id(heater_temp).state);
-            add_val("furnace_target_temp", id(furnace_thermostat).target_temperature);
-            add_val("engine_target_temp", id(engine_thermostat).target_temperature);
-            add_val("min_residual_heat", id(min_residual_heat_number).state);
-            add_val("cabin_temp_offset", id(main_temp_offset).state);
+                  add_int("uptime", id(uptime_sensor).state);
+                  add_int("fan_on_s", id(fan_on_s).state);
+                  add_int("furnace_on_s", id(furnace_on_s).state);
+                  add_val("cabin_temp", id(main_temp).state);
+                  add_val("cabin_humidity", id(main_humidity).state);
+                  add_val("heater_loop_temp", id(heater_temp).state);
+                  add_val("furnace_target_temp", id(furnace_thermostat).target_temperature);
+                  add_val("engine_target_temp", id(engine_thermostat).target_temperature);
+                  add_val("min_residual_heat", id(min_residual_heat_number).state);
+                  add_val("cabin_temp_offset", id(main_temp_offset).state);
 
-            if (rpt.length() > 1400) {
-              ESP_LOGE("report_stats", "Telemetry string too long (%zu bytes), potential truncation!", rpt.length());
-            }
+                  if (rpt.length() > 1400) {
+                    ESP_LOGE("report_stats", "Telemetry string too long (%zu bytes), potential truncation!", rpt.length());
+                  }
 
-            ESP_LOGD("report_stats", "UDP: %s", rpt.c_str());
-            return std::vector<uint8_t>(rpt.begin(), rpt.end());
+                  ESP_LOGD("report_stats", "UDP: %s", rpt.c_str());
+                  return std::vector<uint8_t>(rpt.begin(), rpt.end());
 
 button:
   - platform: template
@@ -569,11 +557,7 @@ interval:
           } else {
             consecutive_failed_reads = 0;
           }
-      - if:
-          condition:
-            lambda: "return !id(influxdb_host_text).state.empty();"
-          then:
-            - script.execute: report_stats
+      - script.execute: report_stats
 
 # Custom PWA Web Interface Hosting
 web_host:
