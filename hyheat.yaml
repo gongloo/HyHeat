@@ -381,10 +381,10 @@ climate:
       - switch.turn_off: furnace_fan_demand
     fan_only_action:
       - switch.turn_on: furnace_fan_demand
-    on_control:
+    on_state:
       then:
         - lambda: |-
-            if (id(furnace_thermostat).mode == climate::CLIMATE_MODE_HEAT) {
+            if (x.mode == climate::CLIMATE_MODE_HEAT) {
               if (id(engine_thermostat).mode != climate::CLIMATE_MODE_HEAT) {
                 auto call = id(engine_thermostat).make_call();
                 call.set_mode(climate::CLIMATE_MODE_HEAT);
@@ -422,10 +422,10 @@ climate:
             - switch.turn_off: engine_fan_demand
     idle_action:
       - switch.turn_off: engine_fan_demand
-    on_control:
+    on_state:
       then:
         - lambda: |-
-            if (id(engine_thermostat).mode == climate::CLIMATE_MODE_OFF) {
+            if (x.mode == climate::CLIMATE_MODE_OFF) {
               if (id(furnace_thermostat).mode != climate::CLIMATE_MODE_OFF) {
                 auto call = id(furnace_thermostat).make_call();
                 call.set_mode(climate::CLIMATE_MODE_OFF);
