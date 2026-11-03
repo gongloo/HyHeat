@@ -442,7 +442,7 @@ script:
               if (n > 0 && n < (int)sizeof(buf)) rpt.append(buf, n);
             };
 
-            rpt = "hyheat,host=${name} furnace_relay=";
+            rpt = "hyheat,host=${name | lower} furnace_relay=";
             rpt += (id(furnace_relay).state ? 'T' : 'F');
             rpt += ",fan_relay=";
             rpt += (id(fan_relay).state ? 'T' : 'F');
@@ -467,7 +467,7 @@ script:
             add_val("cabin_temp_offset", id(main_temp_offset).state);
 
             if (rpt.length() > 1400) {
-              ESP_LOGE("report_stats", "Telemetry string too long (%d bytes), potential truncation!", rpt.length());
+              ESP_LOGE("report_stats", "Telemetry string too long (%zu bytes), potential truncation!", rpt.length());
             }
 
             ESP_LOGD("report_stats", "UDP: %s", rpt.c_str());
