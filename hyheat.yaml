@@ -172,6 +172,15 @@ sensor:
             a: 0.000852729
             b: 0.000257773
             c: 1.6183975e-7
+      # Plausibility window filter: standard automotive coolant loops operate between
+      # -35°C and 115°C. Anything outside [-40°C, 130°C] or readings while sensor power
+      # is cut indicate an open circuit, shorted thermistor, or power-cycling transient,
+      # which should evaluate to NaN to safely trigger system health checks.
+      - lambda: |-
+          if (!id(temp_power).state || x < -40.0f || x > 130.0f) {
+            return NAN;
+          }
+          return x;
     # Triggers that dynamically enable/disable the Engine Heat Thermostat based on coolant temperature
     on_value:
       - then:
