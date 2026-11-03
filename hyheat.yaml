@@ -116,7 +116,7 @@ text:
 sensor:
   # Cabin Temperature Sensor (DHT22 on main_temp_pin)
   - platform: dht
-    id: dht_sensor
+    id: main_temp_sensor
     pin: ${main_temp_pin}
     model: DHT22
     temperature:
@@ -619,7 +619,7 @@ number:
       sorting_group_id: "settings"
     on_value:
       then:
-        - component.update: dht_sensor
+        - component.update: main_temp_sensor
 
   - platform: template
     name: "Min Residual Heat"
