@@ -346,6 +346,11 @@ switch:
             - switch.turn_on: engine_fan_demand
     on_turn_off:
       - switch.turn_off: engine_fan_demand
+      - if:
+          condition:
+            lambda: "return id(furnace_thermostat).action == climate::CLIMATE_ACTION_HEATING && !id(furnace_relay).state;"
+          then:
+            - switch.turn_on: furnace_relay
     web_server:
       sorting_group_id: "debug"
 
@@ -374,7 +379,11 @@ climate:
       max_temperature: ${max_temp}
       temperature_step: 0.5
     heat_action:
-      - switch.turn_on: furnace_relay
+      - if:
+          condition:
+            lambda: "return !id(has_residual_heat).state;"
+          then:
+            - switch.turn_on: furnace_relay
       - switch.turn_on: furnace_fan_demand
     idle_action:
       - switch.turn_off: furnace_relay
