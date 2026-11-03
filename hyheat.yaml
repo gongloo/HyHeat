@@ -442,7 +442,7 @@ script:
               if (n > 0 && n < (int)sizeof(buf)) rpt.append(buf, n);
             };
 
-            rpt = "hyheat,host=${name | lower} furnace_relay=";
+            rpt = "hyheat,host=${name | lower | replace(' ', '_') | replace(',', '_') | replace('=', '_')} furnace_relay=";
             rpt += (id(furnace_relay).state ? 'T' : 'F');
             rpt += ",fan_relay=";
             rpt += (id(fan_relay).state ? 'T' : 'F');
