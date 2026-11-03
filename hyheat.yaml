@@ -116,6 +116,7 @@ text:
 sensor:
   # Cabin Temperature Sensor (DHT22 on main_temp_pin)
   - platform: dht
+    id: main_temp_sensor
     pin: ${main_temp_pin}
     model: DHT22
     temperature:
@@ -282,24 +283,6 @@ switch:
     web_server:
       sorting_group_id: "debug"
 
-  # Fan Override - Force Fan ON manually
-  - platform: template
-    id: fan_override
-    name: "Fan Override"
-    internal: true
-    optimistic: true
-    restore_mode: ALWAYS_OFF
-    on_turn_on:
-      - switch.turn_on: fan_relay
-    on_turn_off:
-      - if:
-          condition:
-            lambda: "return !id(furnace_fan_demand).state && !id(engine_fan_demand).state;"
-          then:
-            - switch.turn_off: fan_relay
-    web_server:
-      sorting_group_id: "debug"
-
   # Dummy Switch for Furnace Fan demand
   - platform: template
     id: furnace_fan_demand
@@ -314,7 +297,7 @@ switch:
     on_turn_off:
       - if:
           condition:
-            lambda: "return !id(engine_fan_demand).state && !id(fan_override).state;"
+            lambda: "return !id(engine_fan_demand).state && id(fan_mode).state != \"On\";"
           then:
             - switch.turn_off: fan_relay
 
@@ -332,7 +315,7 @@ switch:
     on_turn_off:
       - if:
           condition:
-            lambda: "return !id(furnace_fan_demand).state && !id(fan_override).state;"
+            lambda: "return !id(furnace_fan_demand).state && id(fan_mode).state != \"On\";"
           then:
             - switch.turn_off: fan_relay
 
@@ -497,7 +480,7 @@ script:
             rpt += ",fan_relay=";
             rpt += (id(fan_relay).state ? 'T' : 'F');
             rpt += ",fan_override=";
-            rpt += (id(fan_override).state ? 'T' : 'F');
+            rpt += (id(fan_mode).state == "On" ? 'T' : 'F');
             rpt += ",has_residual_heat=";
             rpt += (id(has_residual_heat).state ? 'T' : 'F');
             rpt += ",engine_thermostat_on=";
@@ -608,12 +591,17 @@ select:
     initial_option: "Auto"
     on_value:
       then:
-        - lambda: |-
-            if (x == "On") {
-              id(fan_override).turn_on();
-            } else {
-              id(fan_override).turn_off();
-            }
+        - if:
+            condition:
+              lambda: 'return x == "On";'
+            then:
+              - switch.turn_on: fan_relay
+            else:
+              - if:
+                  condition:
+                    lambda: "return !id(furnace_fan_demand).state && !id(engine_fan_demand).state;"
+                  then:
+                    - switch.turn_off: fan_relay
 
 number:
   - platform: template
@@ -629,6 +617,9 @@ number:
     restore_value: true
     web_server:
       sorting_group_id: "settings"
+    on_value:
+      then:
+        - component.update: main_temp_sensor
 
   - platform: template
     name: "Min Residual Heat"
