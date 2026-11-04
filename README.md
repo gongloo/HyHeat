@@ -34,19 +34,21 @@ By utilizing dual-thermostat climate logic, HyHeat seamlessly harvests "free" wa
 - **Real-time UDP Telemetry**:
   - Pushes InfluxDB line-protocol statistics via UDP for instant Grafana/InfluxDB dashboard visualization.
   - Tracks uptime, exact duty times for the fan and furnace, sensor readings, and setpoints.
-  - IP and port are dynamically configurable inside the web interface without re-flashing.
+  - IP and port are dynamically configurable inside the web interface without re-flashing, persisting to flash and applied at boot.
 - **OTA Firmware Updates**: Supported natively via ESPHome.
 
 ---
 
 ## 🔌 Hardware Architecture
 
-HyHeat runs on an **ESP32 DevKit** board connected to two relays and two temperature sensors.
+HyHeat runs on an **ESP32 DevKit** board connected to two relays and two temperature sensors. An **ESP32 Silicon Revision 3.0 or higher** (e.g., `ESP32-D0WD-V3` / `ESP32-D0WDR2-V3`) is required due to ESP-IDF compiler and memory optimizations configured in `hyheat.yaml` (`minimum_chip_revision: "3.0"` and `sram1_as_iram: true`).
 
 ### 1. Temperature Sensors
 
-- **Cabin Sensor (DHT22)**: Placed in the living/sleeping quarters. Measures ambient cabin temperature and relative humidity. Powered via a GPIO-controlled transistor/switch to allow hard-reboots.
-- **Heater Loop Sensor (NTC Thermistor)**: Placed on the engine coolant line entering the interior heat exchanger. Calibrated via a standard voltage divider (upstream configuration, 2.2k ohm series resistor) using the native **Steinhart-Hart** converter filter.
+- **Cabin Sensor (DHT22)**: Placed in the living/sleeping quarters. Measures ambient cabin temperature and relative humidity. Powered via the switched power rail (`GPIO21`) to allow automated hard power-cycles on communication failure. Requires a **4.7kΩ–10kΩ pull-up resistor** between the data line (`GPIO18`) and 3.3V.
+- **Heater Loop Sensor (NTC Thermistor)**: Placed on the engine coolant line entering the interior heat exchanger. Wired in an **upstream series voltage divider**:
+  $$\text{GPIO21 (3.3V Switched Power)} \longrightarrow 2.2\text{k}\Omega\text{ Resistor} \longrightarrow \text{GPIO34 (ADC)} \longrightarrow \text{NTC Thermistor (10k}\Omega\text{, } B=3950) \longrightarrow \text{GND}$$
+  Calibrated using ESPHome's native **Steinhart-Hart** converter filter.
 
 ### 2. Relays
 
@@ -55,14 +57,17 @@ HyHeat runs on an **ESP32 DevKit** board connected to two relays and two tempera
 
 ### 3. GPIO Pinout (Default Configuration)
 
-| Pin        | Function          | Description                                             |
-| :--------- | :---------------- | :------------------------------------------------------ |
-| **GPIO18** | Cabin Temp Input  | Connected to the DHT22 data line                        |
-| **GPIO34** | Heater Temp Input | ADC input connected to the NTC thermistor divider       |
-| **GPIO21** | Sensor Power      | Controls VCC to the DHT22/thermistor for hardware reset |
-| **GPIO16** | Furnace Relay     | High triggers hydronic furnace burn                     |
-| **GPIO17** | Fan Relay         | High triggers matrix radiator fan                       |
-| **GPIO23** | Status LED        | System diagnostic LED indicator                         |
+| Pin        | Function          | Description                                                                              |
+| :--------- | :---------------- | :--------------------------------------------------------------------------------------- |
+| **GPIO18** | Cabin Temp Input  | Connected to the DHT22 data line (requires 4.7kΩ–10kΩ pull-up to 3.3V)                   |
+| **GPIO34** | Heater Temp Input | ADC input connected between 2.2kΩ reference resistor and NTC thermistor                 |
+| **GPIO21** | Sensor Power      | Switched 3.3V power rail for DHT22 and NTC divider; power-cycles for automated recovery* |
+| **GPIO16** | Furnace Relay     | High triggers hydronic furnace burn                                                      |
+| **GPIO17** | Fan Relay         | High triggers matrix radiator fan                                                        |
+| **GPIO23** | Status LED        | System diagnostic LED indicator                                                          |
+
+> [!NOTE]
+> \* **Sensor Power (`GPIO21`):** Direct ESP32 GPIO drive is sufficient for the combined current draw of the DHT22 and NTC voltage divider (<2mA). If using an external high-side transistor or MOSFET switch, ensure very low on-resistance ($R_{\text{DS(on)}}$) or negligible voltage drop so the 3.3V ADC reference voltage calculation remains accurate.
 
 ---
 
@@ -82,6 +87,7 @@ HyHeat is designed to be cleanly integrated directly into your central ESPHome c
 │       ├── sw.js            # PWA service worker
 │       ├── manifest.webmanifest # PWA configuration manifest
 │       ├── apple-touch-icon.png # App icon
+│       ├── icon-96.png      # App icon (96x96)
 │       └── favicon.ico      # Multi-resolution favicon bundle
 ```
 
@@ -93,7 +99,12 @@ To install HyHeat, create an extending YAML configuration file (e.g., `hyheat.ya
 
 ```yaml
 packages:
-  hyheat: github://gongloo/HyHeat/hyheat.yaml@2.1.3
+  hyheat: github://gongloo/HyHeat/hyheat.yaml@2.2.0
+
+# WiFi credentials for your local network
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
 
 # Enable Home Assistant API with secrets
 api:
@@ -161,7 +172,7 @@ The PWA is designed with a premium, mobile-first dashboard aesthetic:
 HyHeat sends real-time statistics in InfluxDB line-protocol format. The payload is constructed and optimized to fit into a single MTU:
 
 ```text
-hyheat,host=HyHeat furnace_relay=F,fan_relay=T,fan_override=F,has_residual_heat=T,engine_thermostat_on=T,furnace_thermostat_on=T,uptime=3624i,fan_on_s=120i,furnace_on_s=0i,cabin_temp=21.4,cabin_humidity=42.1,heater_loop_temp=62.8,furnace_target_temp=19.0,engine_target_temp=24.0,min_residual_heat=55.0
+hyheat,host=hyheat furnace_relay=F,fan_relay=T,fan_override=F,has_residual_heat=T,engine_thermostat_on=T,furnace_thermostat_on=T,uptime=3624i,fan_on_s=120i,furnace_on_s=0i,cabin_temp=21.4,cabin_humidity=42.1,heater_loop_temp=62.8,furnace_target_temp=19.0,engine_target_temp=24.0,min_residual_heat=55.0,cabin_temp_offset=0
 ```
 
-You can point these logs to a UDP listener in InfluxDB (port `8089` by default) to build dashboards monitoring fuel efficiency, heating duties, and temperature curves in real time.
+Destination IP and port are configurable via the web interface under **UDP Configuration (Restart Required)** and saved to non-volatile storage (NVS), taking effect whenever the device boots or restarts. You can point these packets to a UDP listener in InfluxDB (port `8089` by default) to build dashboards monitoring fuel efficiency, heating duties, and temperature curves in real time.
