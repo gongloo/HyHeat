@@ -301,7 +301,7 @@ switch:
     on_turn_off:
       - if:
           condition:
-            lambda: "return !id(engine_fan_demand).state && id(fan_mode).state != \"On\";"
+            lambda: 'return !id(engine_fan_demand).state && id(fan_mode)->current_option() != "On";'
           then:
             - switch.turn_off: fan_relay
 
@@ -319,7 +319,7 @@ switch:
     on_turn_off:
       - if:
           condition:
-            lambda: "return !id(furnace_fan_demand).state && id(fan_mode).state != \"On\";"
+            lambda: 'return !id(furnace_fan_demand).state && id(fan_mode)->current_option() != "On";'
           then:
             - switch.turn_off: fan_relay
 
@@ -501,7 +501,7 @@ script:
                   rpt += ",fan_relay=";
                   rpt += (id(fan_relay).state ? 'T' : 'F');
                   rpt += ",fan_override=";
-                  rpt += (id(fan_mode).state == "On" ? 'T' : 'F');
+                  rpt += (id(fan_mode)->current_option() == "On" ? 'T' : 'F');
                   rpt += ",has_residual_heat=";
                   rpt += (id(has_residual_heat).state ? 'T' : 'F');
                   rpt += ",engine_thermostat_on=";
