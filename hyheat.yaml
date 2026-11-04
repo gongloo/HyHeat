@@ -213,14 +213,6 @@ sensor:
                     args: ['x']
                 - switch.turn_off: furnace_relay
 
-  # Uptime sensor for diagnostics
-  - platform: uptime
-    name: "Uptime"
-    id: uptime_sensor
-    update_interval: 10s
-    web_server:
-      sorting_group_id: "host"
-
   - platform: duty_time
     id: fan_on_s
     name: "Fan On Seconds"
@@ -509,7 +501,7 @@ script:
                   rpt += ",furnace_thermostat_on=";
                   rpt += (id(furnace_thermostat).mode != climate::CLIMATE_MODE_OFF ? 'T' : 'F');
 
-                  add_int("uptime", id(uptime_sensor).state);
+                  add_int("uptime", millis() / 1000);
                   add_int("fan_on_s", id(fan_on_s).state);
                   add_int("furnace_on_s", id(furnace_on_s).state);
                   add_val("cabin_temp", id(main_temp).state);
