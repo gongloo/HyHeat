@@ -381,6 +381,7 @@ climate:
       - switch.turn_off: furnace_relay
       - switch.turn_off: furnace_fan_demand
     fan_only_action:
+      - switch.turn_off: furnace_relay
       - switch.turn_on: furnace_fan_demand
     on_state:
       then:
