@@ -16,35 +16,29 @@ substitutions:
   max_temp: "38.0"
   max_furnace_temp: "90.0"
 
+  # Source location of custom external components
+  web_host_component_source: "github://gongloo/esphome-web-host@v2.1.1"
+  influxdb_udp_component_source: "github://gongloo/esphome-influxdb-udp@v1.0.0"
+
 esphome:
   name: "${name | lower}"
   comment: "Hydronic heating controller for RVs"
   project:
     name: "gongloo.${name}"
-    version: "2.2.0"
+    version: "2.3.0"
   min_version: 2026.10.0
   on_boot:
     - priority: 800.0
       then:
         - switch.turn_on: temp_power
-    - priority: 250.0
-      then:
-        - lambda: |-
-            if (!id(influxdb_host_text).state.empty()) {
-              static std::string s_ip = id(influxdb_host_text).state;
-              static const char *addrs[] = {s_ip.c_str(), nullptr};
-              id(influxdb_udp)->set_addresses(addrs);
-            }
-            if (id(influxdb_port_number).state > 0) {
-              id(influxdb_udp)->set_broadcast_port(id(influxdb_port_number).state);
-            }
 
 external_components:
-  - source:
-      type: git
-      url: https://github.com/gongloo/esphome-web-host.git
-      ref: v2.1.1
+  - source: ${web_host_component_source}
+    id: "web_host_component"
     components: [web_host]
+  - source: ${influxdb_udp_component_source}
+    id: "influxdb_udp_component"
+    components: [influxdb_udp]
 
 esp32:
   board: esp32dev
@@ -59,9 +53,6 @@ wifi:
   ap:
     ssid: "${name} Fallback"
 captive_portal:
-
-udp:
-  - id: influxdb_udp
 
 web_server:
   version: 3
@@ -78,7 +69,7 @@ web_server:
       name: "Settings"
       sorting_weight: 20
     - id: "udp_settings"
-      name: "UDP Configuration (Restart Required)"
+      name: "UDP Configuration"
       sorting_weight: 60
     - id: "debug"
       name: "Debug"
@@ -459,65 +450,50 @@ script:
 
   - id: report_stats
     then:
-      - if:
-          condition:
-            lambda: "return !id(influxdb_host_text).state.empty();"
-          then:
-            - udp.write:
-                id: influxdb_udp
-                data: !lambda |-
-                  std::string rpt;
-                  rpt.reserve(1024);
-                  char buf[32];
+      - influxdb_udp.publish: hyheat_stats
 
-                  auto add_val = [&](const char* name, float val) {
-                    if (std::isnan(val)) return;
-                    rpt += ",";
-                    rpt += name;
-                    rpt += "=";
-                    int n = snprintf(buf, sizeof(buf), "%.4g", val);
-                    if (n > 0 && n < (int)sizeof(buf)) rpt.append(buf, n);
-                  };
-
-                  auto add_int = [&](const char* name, float val) {
-                    if (std::isnan(val)) return;
-                    rpt += ",";
-                    rpt += name;
-                    rpt += "=";
-                    int n = snprintf(buf, sizeof(buf), "%" PRIu32 "i", (uint32_t)val);
-                    if (n > 0 && n < (int)sizeof(buf)) rpt.append(buf, n);
-                  };
-
-                  rpt = "hyheat,host=${name | lower | replace(' ', '_') | replace(',', '_') | replace('=', '_')} furnace_relay=";
-                  rpt += (id(furnace_relay).state ? 'T' : 'F');
-                  rpt += ",fan_relay=";
-                  rpt += (id(fan_relay).state ? 'T' : 'F');
-                  rpt += ",fan_override=";
-                  rpt += (id(fan_mode)->current_option() == "On" ? 'T' : 'F');
-                  rpt += ",has_residual_heat=";
-                  rpt += (id(has_residual_heat).state ? 'T' : 'F');
-                  rpt += ",engine_thermostat_on=";
-                  rpt += (id(engine_thermostat).mode != climate::CLIMATE_MODE_OFF ? 'T' : 'F');
-                  rpt += ",furnace_thermostat_on=";
-                  rpt += (id(furnace_thermostat).mode != climate::CLIMATE_MODE_OFF ? 'T' : 'F');
-
-                  add_int("uptime", millis() / 1000);
-                  add_int("fan_on_s", id(fan_on_s).state);
-                  add_int("furnace_on_s", id(furnace_on_s).state);
-                  add_val("cabin_temp", id(main_temp).state);
-                  add_val("cabin_humidity", id(main_humidity).state);
-                  add_val("heater_loop_temp", id(heater_temp).state);
-                  add_val("furnace_target_temp", id(furnace_thermostat).target_temperature);
-                  add_val("engine_target_temp", id(engine_thermostat).target_temperature);
-                  add_val("min_residual_heat", id(min_residual_heat_number).state);
-                  add_val("cabin_temp_offset", id(main_temp_offset).state);
-
-                  if (rpt.length() > 1400) {
-                    ESP_LOGE("report_stats", "Telemetry string too long (%zu bytes), potential truncation!", rpt.length());
-                  }
-
-                  ESP_LOGD("report_stats", "UDP: %s", rpt.c_str());
-                  return std::vector<uint8_t>(rpt.begin(), rpt.end());
+influxdb_udp:
+  host_text_id: influxdb_host_text
+  port_number_id: influxdb_port_number
+  tags:
+    host: "${name | lower | replace(' ', '_') | replace(',', '_') | replace('=', '_')}"
+  measurements:
+    - measurement: hyheat
+      id: hyheat_stats
+      update_interval: 10s
+      fields:
+        furnace_relay: furnace_relay
+        fan_relay: fan_relay
+        fan_override:
+          type: bool
+          lambda: 'return id(fan_mode)->current_option() == "On";'
+        has_residual_heat: has_residual_heat
+        engine_thermostat_on:
+          type: bool
+          lambda: "return id(engine_thermostat).mode != climate::CLIMATE_MODE_OFF;"
+        furnace_thermostat_on:
+          type: bool
+          lambda: "return id(furnace_thermostat).mode != climate::CLIMATE_MODE_OFF;"
+        uptime:
+          type: uint
+          lambda: "return millis() / 1000;"
+        fan_on_s:
+          sensor: fan_on_s
+          type: int
+        furnace_on_s:
+          sensor: furnace_on_s
+          type: int
+        cabin_temp: main_temp
+        cabin_humidity: main_humidity
+        heater_loop_temp: heater_temp
+        furnace_target_temp:
+          type: float
+          lambda: "return id(furnace_thermostat).target_temperature;"
+        engine_target_temp:
+          type: float
+          lambda: "return id(engine_thermostat).target_temperature;"
+        min_residual_heat: min_residual_heat_number
+        cabin_temp_offset: main_temp_offset
 
 button:
   - platform: template
@@ -558,7 +534,6 @@ interval:
           } else {
             consecutive_failed_reads = 0;
           }
-      - script.execute: report_stats
 
 # Custom PWA Web Interface Hosting
 web_host:
