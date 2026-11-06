@@ -465,17 +465,13 @@ influxdb_udp:
         furnace_relay: furnace_relay
         fan_relay: fan_relay
         fan_override:
-          type: bool
           lambda: 'return id(fan_mode)->current_option() == "On";'
         has_residual_heat: has_residual_heat
         engine_thermostat_on:
-          type: bool
           lambda: "return id(engine_thermostat).mode != climate::CLIMATE_MODE_OFF;"
         furnace_thermostat_on:
-          type: bool
           lambda: "return id(furnace_thermostat).mode != climate::CLIMATE_MODE_OFF;"
         uptime:
-          type: uint
           lambda: "return millis() / 1000;"
         fan_on_s:
           sensor: fan_on_s
@@ -487,10 +483,8 @@ influxdb_udp:
         cabin_humidity: main_humidity
         heater_loop_temp: heater_temp
         furnace_target_temp:
-          type: float
           lambda: "return id(furnace_thermostat).target_temperature;"
         engine_target_temp:
-          type: float
           lambda: "return id(engine_thermostat).target_temperature;"
         min_residual_heat: min_residual_heat_number
         cabin_temp_offset: main_temp_offset
