@@ -17,7 +17,7 @@ substitutions:
   max_furnace_temp: "90.0"
 
   # Source location of custom external components
-  web_host_component_source: "github://gongloo/esphome-web-host@v2.1.1"
+  web_host_component_source: "github://gongloo/esphome-web-host@v3.0.1"
   influxdb_udp_component_source: "github://gongloo/esphome-influxdb-udp@v1.0.0"
 
 esphome:
@@ -25,7 +25,7 @@ esphome:
   comment: "Hydronic heating controller for RVs"
   project:
     name: "gongloo.${name}"
-    version: "2.3.0"
+    version: "2.4.0"
   min_version: 2026.10.0
   on_boot:
     - priority: 800.0
@@ -35,7 +35,7 @@ esphome:
 external_components:
   - source: ${web_host_component_source}
     id: "web_host_component"
-    components: [web_host]
+    components: [web_host, pwa_host]
   - source: ${influxdb_udp_component_source}
     id: "influxdb_udp_component"
     components: [influxdb_udp]
@@ -530,20 +530,23 @@ interval:
           }
 
 # Custom PWA Web Interface Hosting
-web_host:
+pwa_host:
+  name: "${name}"
+  short_name: "${name}"
+  start_url: "thermostat"
+  theme_color: "#0c0c0e"
+  background_color: "#0c0c0e"
+  icons:
+    - id: ui_icon
+      file: "data/htdocs/apple-touch-icon.png"
+      url: "/apple-touch-icon.png"
+      sizes: "160x160 192x192"
+      purpose: "any maskable"
   files:
     - id: ui_page
       file: "data/htdocs/thermostat.html"
       url: "/thermostat"
-    - id: ui_manifest
-      file: "data/htdocs/manifest.webmanifest"
-      url: "/manifest.webmanifest"
-    - id: ui_sw
-      file: "data/htdocs/sw.js"
-      url: "/sw.js"
-    - id: ui_icon
-      file: "data/htdocs/apple-touch-icon.png"
-      url: "/apple-touch-icon.png"
+      aliases: ["thermostat.html"]
     - id: ui_icon_96
       file: "data/htdocs/icon-96.png"
       url: "/icon-96.png"
