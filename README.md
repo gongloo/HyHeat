@@ -28,7 +28,7 @@ By utilizing dual-thermostat climate logic, HyHeat seamlessly harvests "free" wa
   - Dedicated automated interval checks monitor temperature readings.
   - If a sensor bus lockup or `NaN` reading is detected for 10 consecutive cycles (100 seconds), a dedicated power GPIO pin performs a hard power-cycle of the sensor bus to automatically recover.
 - **Luxury Glassmorphic PWA Web Interface**:
-  - Served directly from the ESP32 via a custom high-performance `web_host` ESPHome component.
+  - Served directly from the ESP32 via the `pwa_host` component from `esphome-web-host` (which auto-generates `sw.js` and `manifest.webmanifest` at compile time).
   - Premium Outfit typography, fluid interactive double-handle temperature dial, SVG-rendered active glows, and hardware-accelerated animations.
   - Fully installable PWA with full-screen standalone capability, custom assets, service worker caching, and theme styling.
 - **Real-time UDP Telemetry**:
@@ -84,8 +84,6 @@ HyHeat is designed to be cleanly integrated directly into your central ESPHome c
 ├── data/
 │   └── htdocs/              # Static web interface files
 │       ├── thermostat.html  # Main glassmorphic interface
-│       ├── sw.js            # PWA service worker
-│       ├── manifest.webmanifest # PWA configuration manifest
 │       ├── apple-touch-icon.png # App icon
 │       ├── icon-96.png      # App icon (96x96)
 │       └── favicon.ico      # Multi-resolution favicon bundle
